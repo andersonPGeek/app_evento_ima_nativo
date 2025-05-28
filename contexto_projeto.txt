@@ -1,0 +1,30 @@
+# CONTEXTO DO PROJETO
+
+## O que já foi feito:
+- Estrutura inicial do projeto definida
+- Tela de Login criada
+- Navegação para tela de recuperação de senha implementada
+- Tela de Recuperar Senha criada
+- Tela de Criar Senha criada
+- Lógica de redirecionamento para criar senha implementada (quando e-mail = senha)
+- Integração real das APIs centralizada em src/api/index.js
+- Telas ajustadas para usar funções de API e exibir mensagens reais do back-end
+- Tela de Checkin (QR Code) criada conforme especificação
+- Bottom Navigation dinâmico conforme Role implementado
+- Telas Webview para Eventos, Agenda, Estandes, Listagem, Cadastro criadas
+- Navegação principal ajustada para usar BottomTabs após login
+- Loading global na navegação
+- Logout funcional
+
+## O que ainda falta fazer:
+- Persistência de token e role (já parcialmente feito)
+- Loading e feedback visual nas telas (parcialmente feito)
+- Pronto para build e publicação
+
+## Observações:
+- Utilizar Expo Go para testes
+- Utilizar React Navigation
+- Utilizar AsyncStorage para persistência
+- Utilizar axios para requisições
+- Utilizar expo-camera e expo-barcode-scanner para QR Code
+- O arquivo será atualizado a cada nova etapa concluída 

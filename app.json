@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "app_evento_ima_nativo",
+    "slug": "app_evento_ima_nativo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permita o acesso à câmera para escanear QR Codes.",
+          "microphonePermission": "Permita o acesso ao microfone para gravação de vídeo.",
+          "recordAudioAndroid": false
+        }
+      ]
+    ],
+    "android": {
+      "permissions": [
+        "CAMERA"
+      ]
+    },
+    "ios": {
+      "infoPlist": {
+        "NSCameraUsageDescription": "Permita o acesso à câmera para escanear QR Codes.",
+        "NSMicrophoneUsageDescription": "Permita o acesso ao microfone para gravação de vídeo."
+      }
+    }
+  }
+}
