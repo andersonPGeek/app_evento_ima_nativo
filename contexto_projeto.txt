@@ -11,12 +11,21 @@
 - Telas ajustadas para usar funções de API e exibir mensagens reais do back-end
 - Tela de Checkin (QR Code) criada conforme especificação
 - Bottom Navigation dinâmico conforme Role implementado
-- Telas Webview para Eventos, Agenda, Estandes, Listagem, Cadastro criadas
 - Navegação principal ajustada para usar BottomTabs após login
 - Loading global na navegação
 - Logout funcional
+- SafeArea implementado para Bottom Navigation e telas principais
+- Fallback amigável para roles não suportadas
 
-## O que ainda falta fazer:
+## Migração das telas WebView para nativas (em andamento):
+- [x] Eventos (EventList.tsx) - busca, listagem, navegação, detalhes, integração com API
+- [x] Agenda (EventSchedule.tsx) - tabs, filtros, detalhes, integração com API
+- [x] Estandes (SponsorCard.tsx) - favoritos, detalhes, integração com API
+- [x] Listagem de Checkins (CheckinListPage.tsx) - listagem, integração com API
+- [x] Cadastro (RegisterPage.tsx) - formulário, integração com API
+- [x] Atualizar BottomTabs para usar as novas telas nativas
+
+## O que ainda falta fazer após a migração:
 - Persistência de token e role (já parcialmente feito)
 - Loading e feedback visual nas telas (parcialmente feito)
 - Pronto para build e publicação
@@ -26,5 +35,5 @@
 - Utilizar React Navigation
 - Utilizar AsyncStorage para persistência
 - Utilizar axios para requisições
-- Utilizar expo-camera e expo-barcode-scanner para QR Code
+- Utilizar expo-camera para QR Code
 - O arquivo será atualizado a cada nova etapa concluída 

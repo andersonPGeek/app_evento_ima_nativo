@@ -23,13 +23,20 @@
     ],
     "android": {
       "permissions": [
-        "CAMERA"
-      ]
+        "CAMERA",
+        "android.permission.CAMERA"
+      ],
+      "package": "com.andersonpsilva.app_evento_ima_nativo"
     },
     "ios": {
       "infoPlist": {
         "NSCameraUsageDescription": "Permita o acesso à câmera para escanear QR Codes.",
         "NSMicrophoneUsageDescription": "Permita o acesso ao microfone para gravação de vídeo."
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3f66bc84-2707-4f0b-a568-bda0f3e1ec73"
       }
     }
   }

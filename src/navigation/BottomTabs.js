@@ -4,6 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import WebviewScreen from '../screens/WebviewScreen';
 import CheckinScreen from '../screens/CheckinScreen';
+import EventListScreen from '../screens/EventListScreen';
+import EventScheduleScreen from '../screens/EventScheduleScreen';
+import SponsorShowcaseScreen from '../screens/SponsorShowcaseScreen';
+import CheckinListScreen from '../screens/CheckinListScreen';
+import RegisterScreen from '../screens/RegisterScreen';
 import { View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,9 +17,6 @@ const Tab = createBottomTabNavigator();
 export default function BottomTabs() {
   const { role, logout } = useAuth();
   const insets = useSafeAreaInsets();
-
-  // Log para depuração
-  console.log('Role atual:', role);
 
   // Fallback para role indefinido
   if (!role) {
@@ -75,9 +77,9 @@ export default function BottomTabs() {
       {/* Role: user */}
       {role === 'user' && (
         <>
-          <Tab.Screen name="Eventos" component={WebTab('https://app-eventos-ima.vercel.app/eventos')} />
-          <Tab.Screen name="Agenda" component={WebTab('https://app-eventos-ima.vercel.app/schedule')} />
-          <Tab.Screen name="Estandes" component={WebTab('https://app-eventos-ima.vercel.app/sponsors')} />
+          <Tab.Screen name="Eventos" component={EventListScreen} />
+          <Tab.Screen name="Agenda" component={EventScheduleScreen} />
+          <Tab.Screen name="Estandes" component={SponsorShowcaseScreen} />
           <Tab.Screen name="Sair" component={() => <LogoutTab logout={logout} />} />
         </>
       )}
@@ -85,9 +87,9 @@ export default function BottomTabs() {
       {(role === 'estande' || role === 'estandeAdmin') && (
         <>
           <Tab.Screen name="Leitura" component={CheckinScreen} />
-          <Tab.Screen name="Listagem" component={WebTab('https://app-eventos-ima.vercel.app/checkin-list')} />
+          <Tab.Screen name="Listagem" component={CheckinListScreen} />
           {role === 'estandeAdmin' && (
-            <Tab.Screen name="Cadastrar" component={WebTab('https://app-eventos-ima.vercel.app/cadastro')} />
+            <Tab.Screen name="Cadastrar" component={RegisterScreen} />
           )}
           <Tab.Screen name="Sair" component={() => <LogoutTab logout={logout} />} />
         </>
