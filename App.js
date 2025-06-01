@@ -6,7 +6,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
 import BottomTabs from './src/navigation/BottomTabs';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const Stack = createStackNavigator();
@@ -15,11 +15,21 @@ function RootNavigator() {
   const { user, role, initializing } = useAuth();
 
   if (initializing) {
-    return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" /></View>;
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={{ marginTop: 10 }}>Carregando...</Text>
+      </View>
+    );
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator 
+      screenOptions={{ 
+        headerShown: false,
+        cardStyle: { backgroundColor: '#fff' }
+      }}
+    >
       {!user ? (
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
@@ -35,12 +45,14 @@ function RootNavigator() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <SafeAreaProvider>
-        <NavigationContainer>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <NavigationContainer
+          fallback={<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" /></View>}
+        >
           <RootNavigator />
         </NavigationContainer>
-      </SafeAreaProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 } 

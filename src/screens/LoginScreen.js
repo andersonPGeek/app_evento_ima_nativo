@@ -11,7 +11,6 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     setError('');
-    
     if (email && senha && email === senha) {
       // Tenta autenticar para obter o userId
       const result = await login(email, senha);

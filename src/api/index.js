@@ -8,11 +8,11 @@ export const loginApi = async (email, senha) => {
 };
 
 export const resetPasswordApi = async (email) => {
-  return axios.post(`${API_BASE_APP}/auth/reset-password`, { email });
+  return axios.post(`${API_BASE}/auth/reset-password`, { email });
 };
 
 export const criarSenhaApi = async (userId, password) => {
-  return axios.post(`${API_BASE_APP}/auth/criar-senha`, { id_usuario: userId, senha: password });
+  return axios.post(`${API_BASE}/auth/criar-senha`, { id_usuario: userId, senha: password });
 };
 
 export const getEmpresaByUserApi = async (userId, token) => {

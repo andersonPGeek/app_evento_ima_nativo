@@ -12,55 +12,97 @@ export const AuthProvider = ({ children }) => {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Recupera token e role do AsyncStorage ao iniciar o app
     const loadStorage = async () => {
       try {
+        setError(null);
         const storedToken = await AsyncStorage.getItem('token');
         const storedRole = await AsyncStorage.getItem('role');
         const storedUserId = await AsyncStorage.getItem('userId');
+        
         if (storedToken && storedRole && storedUserId) {
           setToken(storedToken);
           setRole(storedRole);
           setUser({ id: storedUserId, Role: storedRole });
+        } else {
+          // Se não encontrar dados válidos, limpa o storage
+          await AsyncStorage.clear();
         }
-      } catch (e) {}
-      setInitializing(false);
+      } catch (e) {
+        setError('Erro ao carregar dados do dispositivo');
+        console.error('Erro ao carregar storage:', e);
+      } finally {
+        setInitializing(false);
+      }
     };
     loadStorage();
   }, []);
 
   const login = async (email, senha) => {
     setLoading(true);
+    setError(null);
     try {
       const response = await loginApi(email, senha);
       const { user, token } = response.data;
+      
+      // Validação dos dados
+      if (!user || !token) {
+        throw new Error('Dados de login inválidos');
+      }
+
+      // Se o e-mail e senha são iguais, não define o usuário no contexto
+      if (email === senha) {
+        setLoading(false);
+        return { success: true, user };
+      }
+
       setUser(user);
       setToken(token);
       setRole(user.Role);
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('role', user.Role);
-      await AsyncStorage.setItem('userId', user.id);
+      
+      // Salva no AsyncStorage
+      await Promise.all([
+        AsyncStorage.setItem('token', token),
+        AsyncStorage.setItem('role', user.Role),
+        AsyncStorage.setItem('userId', user.id)
+      ]);
+
       setLoading(false);
       return { success: true, user };
     } catch (error) {
       setLoading(false);
-      let msg = 'Erro ao fazer login';
-      if (error.response?.data?.message) msg = error.response.data.message;
+      let msg = 'Usuário ou senha inválidos';
+      setError(msg);
       return { success: false, error: msg };
     }
   };
 
   const logout = async () => {
-    setUser(null);
-    setToken(null);
-    setRole(null);
-    await AsyncStorage.clear();
+    try {
+      setUser(null);
+      setToken(null);
+      setRole(null);
+      setError(null);
+      await AsyncStorage.clear();
+    } catch (e) {
+      console.error('Erro ao fazer logout:', e);
+      setError('Erro ao fazer logout');
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, role, loading, initializing, login, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      role, 
+      loading, 
+      initializing, 
+      error,
+      login, 
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );

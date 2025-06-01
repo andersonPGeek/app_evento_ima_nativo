@@ -21,8 +21,13 @@ export default function CreatePasswordScreen({ route, navigation }) {
       setError('As senhas não coincidem.');
       return;
     }
+    if (password.length < 6) {
+      setError('A senha deve conter pelo menos 6 caracteres.');
+      return;
+    }
     setLoading(true);
     try {
+      console.log(userId, "123456");
       const res = await criarSenhaApi(userId, password);
       setSuccess(res.data?.message || 'Senha criada com sucesso! Faça login com sua nova senha.');
       setTimeout(() => {

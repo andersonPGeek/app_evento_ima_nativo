@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "app_evento_ima_nativo",
-    "slug": "app_evento_ima_nativo",
+    "name": "IIMA Eventos",
+    "slug": "IIMA Eventos",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
@@ -26,7 +26,10 @@
         "CAMERA",
         "android.permission.CAMERA"
       ],
-      "package": "com.andersonpsilva.app_evento_ima_nativo"
+      "package": "com.andersonpsilva.app_evento_ima_nativo",
+      "enableProguardInReleaseBuilds": true,
+      "enableShrinkResources": true,
+      "enableR8": true
     },
     "ios": {
       "infoPlist": {

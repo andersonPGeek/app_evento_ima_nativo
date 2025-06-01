@@ -6,6 +6,57 @@ import { getEmpresaByUserApi } from '../api';
 
 const API_BASE = 'https://events-br-ima.onrender.com/api';
 
+// Função para formatar CPF
+const formatCPF = (cpf) => {
+  // Remove todos os caracteres não numéricos
+  const numbers = cpf.replace(/\D/g, '');
+  
+  // Aplica a máscara
+  if (numbers.length <= 3) {
+    return numbers;
+  } else if (numbers.length <= 6) {
+    return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
+  } else if (numbers.length <= 9) {
+    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
+  } else {
+    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
+  }
+};
+
+// Função para validar CPF
+const validateCPF = (cpf) => {
+  // Remove caracteres não numéricos
+  const numbers = cpf.replace(/\D/g, '');
+  
+  // Verifica se tem 11 dígitos
+  if (numbers.length !== 11) {
+    return false;
+  }
+
+  // Verifica se todos os dígitos são iguais
+  if (/^(\d)\1{10}$/.test(numbers)) {
+    return false;
+  }
+
+  // Validação do primeiro dígito verificador
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(numbers.charAt(i)) * (10 - i);
+  }
+  let rest = 11 - (sum % 11);
+  let digit1 = rest > 9 ? 0 : rest;
+
+  // Validação do segundo dígito verificador
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(numbers.charAt(i)) * (11 - i);
+  }
+  rest = 11 - (sum % 11);
+  let digit2 = rest > 9 ? 0 : rest;
+
+  return digit1 === parseInt(numbers.charAt(9)) && digit2 === parseInt(numbers.charAt(10));
+};
+
 export default function RegisterScreen() {
   const { user, token } = useAuth();
   const [formData, setFormData] = useState({ Nome: '', CPF: '', Telefone: '', email: '' });
@@ -14,14 +65,31 @@ export default function RegisterScreen() {
   const [success, setSuccess] = useState('');
 
   const handleChange = (name, value) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'CPF') {
+      // Formata o CPF enquanto digita
+      const formattedCPF = formatCPF(value);
+      setFormData(prev => ({ ...prev, [name]: formattedCPF }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async () => {
     setLoading(true);
     setError('');
     setSuccess('');
+
+    // Valida o CPF antes de enviar
+    if (!validateCPF(formData.CPF)) {
+      setError('CPF inválido');
+      setLoading(false);
+      return;
+    }
+
     try {
+      // Remove formatação do CPF antes de enviar
+      const cpfNumbers = formData.CPF.replace(/\D/g, '');
+      
       // 1. Cadastrar usuário
       const res = await fetch(`${API_BASE}/usuarios`, {
         method: 'POST',
@@ -31,6 +99,7 @@ export default function RegisterScreen() {
         },
         body: JSON.stringify({
           ...formData,
+          CPF: cpfNumbers, // Envia apenas números
           Role: 'estande',
           CEP: '',
           Numero: '',
