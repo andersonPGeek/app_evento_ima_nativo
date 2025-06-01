@@ -21,11 +21,16 @@ export const AuthProvider = ({ children }) => {
         const storedToken = await AsyncStorage.getItem('token');
         const storedRole = await AsyncStorage.getItem('role');
         const storedUserId = await AsyncStorage.getItem('userId');
+        const storedEmail = await AsyncStorage.getItem('userEmail');
         
         if (storedToken && storedRole && storedUserId) {
           setToken(storedToken);
           setRole(storedRole);
-          setUser({ id: storedUserId, Role: storedRole });
+          setUser({ 
+            id: storedUserId, 
+            Role: storedRole,
+            email: storedEmail 
+          });
         } else {
           // Se não encontrar dados válidos, limpa o storage
           await AsyncStorage.clear();
@@ -55,10 +60,10 @@ export const AuthProvider = ({ children }) => {
       // Se o e-mail e senha são iguais, não define o usuário no contexto
       if (email === senha) {
         setLoading(false);
-        return { success: true, user };
+        return { success: true, user: { ...user, email } };
       }
 
-      setUser(user);
+      setUser({ ...user, email });
       setToken(token);
       setRole(user.Role);
       
@@ -66,11 +71,12 @@ export const AuthProvider = ({ children }) => {
       await Promise.all([
         AsyncStorage.setItem('token', token),
         AsyncStorage.setItem('role', user.Role),
-        AsyncStorage.setItem('userId', user.id)
+        AsyncStorage.setItem('userId', user.id),
+        AsyncStorage.setItem('userEmail', email)
       ]);
 
       setLoading(false);
-      return { success: true, user };
+      return { success: true, user: { ...user, email } };
     } catch (error) {
       setLoading(false);
       let msg = 'Usuário ou senha inválidos';

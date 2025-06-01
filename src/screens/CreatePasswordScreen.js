@@ -27,7 +27,6 @@ export default function CreatePasswordScreen({ route, navigation }) {
     }
     setLoading(true);
     try {
-      console.log(userId, "123456");
       const res = await criarSenhaApi(userId, password);
       setSuccess(res.data?.message || 'Senha criada com sucesso! Faça login com sua nova senha.');
       setTimeout(() => {

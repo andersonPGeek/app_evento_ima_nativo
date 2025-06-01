@@ -8,6 +8,7 @@ import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
 import BottomTabs from './src/navigation/BottomTabs';
 import { ActivityIndicator, View, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 const Stack = createStackNavigator();
 
@@ -53,6 +54,7 @@ export default function App() {
           <RootNavigator />
         </NavigationContainer>
       </AuthProvider>
+      <Toast />
     </SafeAreaProvider>
   );
 } 

@@ -60,7 +60,7 @@ export default function EventScheduleScreen({ route }) {
         }
         if (eventData.mapaEvento) setEventMapUrl(eventData.mapaEvento);
         const agendaResponse = await fetch(`${API_BASE}/agenda/evento/${eventId}`);
-        console.log('Agenda Response:', agendaResponse)
+
         if (!agendaResponse.ok) throw new Error('Falha ao buscar dados da agenda');
         const agendaData = await agendaResponse.json();
         setTracks(agendaData.trilhas || []);
