@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { getEmpresaByUserApi, checkinApi } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function CheckinScreen() {
   const { user, token } = useAuth();
@@ -14,6 +15,20 @@ export default function CheckinScreen() {
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState(null); // 'success' | 'error' | 'warning' | null
   const [message, setMessage] = useState('');
+  const [isCameraActive, setIsCameraActive] = useState(true);
+
+  // Resetar estados quando a tela recebe foco
+  useFocusEffect(
+    React.useCallback(() => {
+      setIsCameraActive(true);
+      setScanned(false);
+      setFeedback(null);
+      setMessage('');
+      return () => {
+        setIsCameraActive(false);
+      };
+    }, [])
+  );
 
   const handleBarCodeScanned = async ({ data }) => {
     setScanned(true);
@@ -88,7 +103,7 @@ export default function CheckinScreen() {
           </TouchableOpacity>
         </View>
       )}
-      {!loading && !feedback && (
+      {!loading && !feedback && isCameraActive && (
         <CameraView
           style={StyleSheet.absoluteFillObject}
           facing={facing}
@@ -96,7 +111,7 @@ export default function CheckinScreen() {
           onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
         />
       )}
-      {!loading && !feedback && (
+      {!loading && !feedback && isCameraActive && (
         <View style={styles.overlay}><Text style={styles.overlayText}>Aponte para o QR Code</Text></View>
       )}
     </SafeAreaView>

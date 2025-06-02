@@ -9,7 +9,7 @@ import Toast from 'react-native-toast-message';
 const API_BASE = 'https://events-br-ima.onrender.com/api';
 
 export default function CheckinListScreen() {
-  const { user, token } = useAuth();
+  const { user, token, role } = useAuth();
   const [checkins, setCheckins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -101,20 +101,22 @@ export default function CheckinListScreen() {
     <SafeAreaViewContext style={styles.container} edges={['top']}>
       <View style={styles.headerContainer}>
         <Text style={styles.header}>Leituras Realizadas</Text>
-        <TouchableOpacity 
-          style={[styles.exportButton, exporting && styles.exportButtonDisabled]} 
-          onPress={handleExport}
-          disabled={exporting}
-        >
-          {exporting ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="document-text-outline" size={18} color="#fff" style={styles.exportIcon} />
-              <Text style={styles.exportButtonText}>Exportar</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {role === 'estandeAdmin' && (
+          <TouchableOpacity 
+            style={[styles.exportButton, exporting && styles.exportButtonDisabled]} 
+            onPress={handleExport}
+            disabled={exporting}
+          >
+            {exporting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="document-text-outline" size={18} color="#fff" style={styles.exportIcon} />
+                <Text style={styles.exportButtonText}>Exportar</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
       {error ? (
         <View style={styles.errorBox}>

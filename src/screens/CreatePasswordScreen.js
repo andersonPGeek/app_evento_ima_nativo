@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { criarSenhaApi } from '../api';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function CreatePasswordScreen({ route, navigation }) {
-  const { userId, email } = route.params;
+  const { userId, email, token } = route.params;
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const { login } = useAuth();
 
   const handleCreatePassword = async () => {
     setError('');
@@ -28,10 +30,15 @@ export default function CreatePasswordScreen({ route, navigation }) {
     setLoading(true);
     try {
       const res = await criarSenhaApi(userId, password);
-      setSuccess(res.data?.message || 'Senha criada com sucesso! Faça login com sua nova senha.');
-      setTimeout(() => {
-        navigation.navigate('Login', { email });
-      }, 2000);
+      setSuccess(res.data?.message || 'Senha criada com sucesso!');
+      setTimeout(async () => {
+        const result = await login(email, password);
+        if (result.success && result.user) {
+          navigation.replace('Main');
+        } else {
+          navigation.navigate('Login', { email });
+        }
+      }, 1200);
     } catch (err) {
       setError(err.response?.data?.message || 'Erro ao criar senha.');
     }

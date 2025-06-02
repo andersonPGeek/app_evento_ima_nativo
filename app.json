@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "IIMA Eventos",
-    "slug": "IIMA Eventos",
+    "slug": "app_evento_ima_nativo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",

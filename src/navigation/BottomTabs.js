@@ -9,6 +9,7 @@ import EventScheduleScreen from '../screens/EventScheduleScreen';
 import SponsorShowcaseScreen from '../screens/SponsorShowcaseScreen';
 import CheckinListScreen from '../screens/CheckinListScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import TicketScreen from '../screens/TicketScreen';
 import { View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -66,6 +67,8 @@ export default function BottomTabs() {
               return <Ionicons name="list" size={size} color={color} />;
             case 'Cadastrar':
               return <Ionicons name="person-add" size={size} color={color} />;
+            case 'Ticket':
+              return <Ionicons name="ticket" size={size} color={color} />;
             case 'Sair':
               return <Ionicons name="log-out-outline" size={size} color={color} />;
             default:
@@ -80,6 +83,7 @@ export default function BottomTabs() {
           <Tab.Screen name="Eventos" component={EventListScreen} />
           <Tab.Screen name="Agenda" component={EventScheduleScreen} />
           <Tab.Screen name="Estandes" component={SponsorShowcaseScreen} />
+          <Tab.Screen name="Ticket" component={TicketScreen} />
           <Tab.Screen name="Sair" component={() => <LogoutTab logout={logout} />} />
         </>
       )}

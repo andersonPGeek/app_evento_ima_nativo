@@ -1,21 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation, route }) {
   const { login, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (route?.params?.email) setEmail(route.params.email);
+    if (route?.params?.senha) setSenha(route.params.senha);
+  }, [route?.params]);
+
   const handleLogin = async () => {
     setError('');
     if (email && senha && email === senha) {
-      // Tenta autenticar para obter o userId
       const result = await login(email, senha);
-      if (result.success && result.user) {
-        navigation.navigate('CreatePassword', { userId: result.user.id, email });
+      if (result.success && result.mustChangePassword && result.user && result.token) {
+        navigation.replace('CreatePassword', { userId: result.user.id, email, token: result.token });
+        return;
+      } else if (result.success && result.user) {
+        navigation.replace('CreatePassword', { userId: result.user.id, email });
+        return;
+      } else if (result.error === 'sync_required') {
+        navigation.navigate('SyncSympla', { email });
         return;
       } else {
         setError(result.error || 'Erro ao autenticar para criar senha.');
@@ -25,6 +35,10 @@ export default function LoginScreen({ navigation }) {
 
     const result = await login(email, senha);
     if (!result.success) {
+      if (result.error === 'sync_required') {
+        navigation.navigate('SyncSympla', { email });
+        return;
+      }
       setError(result.error);
       return;
     }

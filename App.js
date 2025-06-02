@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
+import SyncSymplaScreen from './src/screens/SyncSymplaScreen';
 import BottomTabs from './src/navigation/BottomTabs';
 import { ActivityIndicator, View, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -36,6 +37,7 @@ function RootNavigator() {
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           <Stack.Screen name="CreatePassword" component={CreatePasswordScreen} />
+          <Stack.Screen name="SyncSympla" component={SyncSymplaScreen} />
         </>
       ) : (
         <Stack.Screen name="Main" component={BottomTabs} />
