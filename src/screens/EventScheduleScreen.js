@@ -36,7 +36,7 @@ export default function EventScheduleScreen({ route }) {
   const [selectedTrack, setSelectedTrack] = useState('');
   const [selectedStage, setSelectedStage] = useState('');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
   const [isLoadingLectures, setIsLoadingLectures] = useState(false);
   const [error, setError] = useState(null);
   const [sessions, setSessions] = useState([]);
@@ -47,7 +47,7 @@ export default function EventScheduleScreen({ route }) {
   const lecturesFetchedRef = useRef({});
   const { user, token } = useAuth();
 
-  // Verificação inicial do eventId
+  // Verificação do eventId e recarregamento dos dados
   useEffect(() => {
     if (!eventId) {
       Alert.alert(
@@ -62,7 +62,8 @@ export default function EventScheduleScreen({ route }) {
       );
       return;
     }
-    // Resetar o ref quando o eventId mudar
+
+    // Resetar os refs e estados quando o eventId mudar
     eventDataFetchedRef.current = false;
     lecturesFetchedRef.current = {};
     fetchEventData();
@@ -168,9 +169,20 @@ export default function EventScheduleScreen({ route }) {
   }, []).sort((a, b) => a.time.localeCompare(b.time));
 
   // Renderização
+  if (!eventId) {
+    return (
+      <SafeAreaViewContext style={styles.center}>
+        <Text style={{ color: '#3a4a5c', textAlign: 'center', padding: 20 }}>
+          Selecione um evento para visualizar a agenda
+        </Text>
+      </SafeAreaViewContext>
+    );
+  }
+
   if (isLoadingInitial) {
     return <SafeAreaViewContext style={styles.center}><ActivityIndicator size="large" /><Text>Carregando dados do evento...</Text></SafeAreaViewContext>;
   }
+
   if (error) {
     return <SafeAreaViewContext style={styles.center}><Text style={{ color: 'red' }}>{error}</Text></SafeAreaViewContext>;
   }
