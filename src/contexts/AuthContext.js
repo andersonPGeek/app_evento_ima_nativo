@@ -93,9 +93,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await loginApi(email, senha);
       
+      console.log('response', response);
       // Se chegou aqui, o login foi bem sucedido
       const { user, token } = response.data;
-      
+      console.log('user', user);
+      console.log('token', token);
       if (!user || !token) {
         throw new Error('Dados de login inválidos');
       }
@@ -119,6 +121,9 @@ export const AuthProvider = ({ children }) => {
         AsyncStorage.setItem('userEmail', email),
         AsyncStorage.setItem('ticket', user.Ticket)
       ]);
+
+      console.log('role', user.Role);
+      console.log('ticket', user.Ticket);
 
       setLoading(false);
       return { success: true, user: { ...user, email } };

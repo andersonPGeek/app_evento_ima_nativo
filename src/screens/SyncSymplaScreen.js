@@ -14,7 +14,9 @@ const EVENTO_ID_MAP = {
   '4': 's2ab991',
   '2': 's2ac494',
   '7': 's2ac55f',
-  '9': 's2aaff4'
+  '9': 's2aaff4',
+  '20': 's2ac649',
+  '1': 's2ac649'
 };
 
 function maskTicket(value) {
@@ -41,7 +43,9 @@ export default function SyncSymplaScreen({ navigation, route }) {
     try {
       const response = await fetch(`${API_BASE}/eventos`);
       const data = await response.json();
-      setEventos(data.eventos);
+      // Remover evento com id = 5
+      const eventosFiltrados = (data.eventos || []).filter(e => String(e.id) !== '5');
+      setEventos(eventosFiltrados);
     } catch (error) {
       console.error('Erro ao buscar eventos:', error);
       Toast.show({
@@ -125,6 +129,8 @@ export default function SyncSymplaScreen({ navigation, route }) {
             style={styles.picker}
             itemStyle={styles.pickerItem}
             mode="dropdown"
+            dropdownIconColor="#101828"
+            prompt="Selecione um evento"
           >
             <Picker.Item label="Selecione um evento" value="" />
             {eventos.map((evento) => (
@@ -132,6 +138,7 @@ export default function SyncSymplaScreen({ navigation, route }) {
                 key={evento.id}
                 label={evento.nomeEvento}
                 value={evento.id}
+                style={{ fontSize: 18, height: 50, color: '#101828' }}
               />
             ))}
           </Picker>
@@ -139,7 +146,7 @@ export default function SyncSymplaScreen({ navigation, route }) {
 
         <TextInput
           style={styles.input}
-          placeholder="Número do Ticket (ex: U3T8-9K-7FMG)"
+          placeholder="Ticket (ex: U3T8-9K-7FMG)"
           value={ticketNumber}
           onChangeText={v => setTicketNumber(maskTicket(v))}
           maxLength={12}
@@ -199,14 +206,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
     marginBottom: 12,
     overflow: 'hidden',
+    minHeight: 54,
   },
   picker: {
     width: '100%',
-    height: 44,
+    height: 54,
+    fontSize: 18,
   },
   pickerItem: {
-    fontSize: 16,
-    height: 44,
+    fontSize: 18,
+    height: 54,
     color: '#101828',
     textAlign: 'left',
   },

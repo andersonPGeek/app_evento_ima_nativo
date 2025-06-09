@@ -24,7 +24,7 @@ export default function EventListScreen() {
       const response = await fetch(API_URL);
       if (!response.ok) throw new Error('Erro ao buscar eventos');
       const data = await response.json();
-      const eventos = data.eventos || [];
+      const eventos = (data.eventos || []).filter(e => String(e.id) !== '20');
       setEvents(eventos);
     } catch (err) {
       setError('Erro ao buscar eventos');
