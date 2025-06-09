@@ -47,8 +47,7 @@ export default function LoginScreen({ navigation, route }) {
     if (result.user?.Role === 'estande' || result.user?.Role === 'estandeAdmin') {
       navigation.replace('Main');
     } else if (result.user?.Role === 'user') {
-      navigation.replace('EventListScreen');
-      //setError('Usuário autenticado, mas navegação para user ainda não implementada.');
+      navigation.replace('Main', { screen: 'Eventos' });
     }
   };
 

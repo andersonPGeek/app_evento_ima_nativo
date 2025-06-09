@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 
 const API_BASE = 'https://events-br-ima.onrender.com/api';
 const API_BASE_APP = 'https://app-eventos-ima.vercel.app';
@@ -24,6 +25,7 @@ function formatFirestoreDate(timestamp) {
 }
 
 export default function EventScheduleScreen({ route }) {
+  const navigation = useNavigation();
   const eventId = route?.params?.eventId;
   const [stages, setStages] = useState([]);
   const [tracks, setTracks] = useState([]);
@@ -45,37 +47,63 @@ export default function EventScheduleScreen({ route }) {
   const lecturesFetchedRef = useRef({});
   const { user, token } = useAuth();
 
+  // Verificação inicial do eventId
   useEffect(() => {
-    const fetchEventData = async () => {
-      if (eventDataFetchedRef.current) return;
-      eventDataFetchedRef.current = true;
-      try {
-        setIsLoadingInitial(true);
-        const eventResponse = await fetch(`${API_BASE}/eventos/${eventId}`);
-        if (!eventResponse.ok) throw new Error('Falha ao buscar dados do evento');
-        const eventData = await eventResponse.json();
-        if (eventData.dataInicio && eventData.dataFim) {
-          setEventDates({ dataInicio: eventData.dataInicio, dataFim: eventData.dataFim });
-          setSelectedDate(new Date(eventData.dataInicio._seconds * 1000));
-        }
-        if (eventData.mapaEvento) setEventMapUrl(eventData.mapaEvento);
-        const agendaResponse = await fetch(`${API_BASE}/agenda/evento/${eventId}`);
+    if (!eventId) {
+      Alert.alert(
+        'Selecione um Evento',
+        'Por favor, selecione um evento na lista de eventos para visualizar a agenda.',
+        [
+          {
+            text: 'Voltar para Eventos',
+            onPress: () => navigation.navigate('Eventos')
+          }
+        ]
+      );
+      return;
+    }
+    // Resetar o ref quando o eventId mudar
+    eventDataFetchedRef.current = false;
+    lecturesFetchedRef.current = {};
+    fetchEventData();
+  }, [eventId, navigation]);
 
-        if (!agendaResponse.ok) throw new Error('Falha ao buscar dados da agenda');
-        const agendaData = await agendaResponse.json();
-        setTracks(agendaData.trilhas || []);
-        setStages(agendaData.palcos || []);
-        if (agendaData.trilhas?.length > 0) setSelectedTrack(agendaData.trilhas[0].id);
-        if (agendaData.palcos?.length > 0) setSelectedStage(agendaData.palcos[0].id);
-      } catch (err) {
-        setError(err.message || 'Erro desconhecido');
-      } finally {
-        setIsLoadingInitial(false);
+  const fetchEventData = async () => {
+    if (!eventId) return;
+    
+    try {
+      setIsLoadingInitial(true);
+      // Limpar dados anteriores
+      setStages([]);
+      setTracks([]);
+      setSessions([]);
+      setSelectedTrack('');
+      setSelectedStage('');
+      setEventMapUrl(null);
+      setError(null);
+      
+      const eventResponse = await fetch(`${API_BASE}/eventos/${eventId}`);
+      if (!eventResponse.ok) throw new Error('Falha ao buscar dados do evento');
+      const eventData = await eventResponse.json();
+      if (eventData.dataInicio && eventData.dataFim) {
+        setEventDates({ dataInicio: eventData.dataInicio, dataFim: eventData.dataFim });
+        setSelectedDate(new Date(eventData.dataInicio._seconds * 1000));
       }
-    };
-    if (eventId) fetchEventData();
-    else { setError('ID do evento não fornecido'); setIsLoadingInitial(false); }
-  }, [eventId]);
+      if (eventData.mapaEvento) setEventMapUrl(eventData.mapaEvento);
+      const agendaResponse = await fetch(`${API_BASE}/agenda/evento/${eventId}`);
+
+      if (!agendaResponse.ok) throw new Error('Falha ao buscar dados da agenda');
+      const agendaData = await agendaResponse.json();
+      setTracks(agendaData.trilhas || []);
+      setStages(agendaData.palcos || []);
+      if (agendaData.trilhas?.length > 0) setSelectedTrack(agendaData.trilhas[0].id);
+      if (agendaData.palcos?.length > 0) setSelectedStage(agendaData.palcos[0].id);
+    } catch (err) {
+      setError(err.message || 'Erro desconhecido');
+    } finally {
+      setIsLoadingInitial(false);
+    }
+  };
 
   useEffect(() => {
     if (tracks.length > 0 && !selectedTrack) setSelectedTrack(tracks[0].id);

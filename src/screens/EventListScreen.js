@@ -59,7 +59,16 @@ export default function EventListScreen() {
           <Text style={styles.participants}>{item.participantes} participantes</Text>
         </View>
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Agenda', { eventId: item.id })}>
+          <TouchableOpacity 
+            style={styles.button} 
+            onPress={() => {
+              navigation.navigate('Agenda', { 
+                eventId: item.id,
+                screen: 'Agenda',
+                timestamp: new Date().getTime()
+              });
+            }}
+          >
             <Text style={styles.buttonText}>Entrar</Text>
             <MaterialIcons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 6 }} />
           </TouchableOpacity>
