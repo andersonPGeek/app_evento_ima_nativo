@@ -3,6 +3,9 @@ import { View, Text, TouchableOpacity, Image, FlatList, ScrollView, StyleSheet, 
 import { Ionicons, AntDesign } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
+import telefoneIcon from '../../assets/telefone.png';
+import websiteIcon from '../../assets/website.png';
+import whatsappIcon from '../../assets/whatsapp.png';
 
 const API_BASE = 'https://events-br-ima.onrender.com/api';
 
@@ -51,8 +54,11 @@ export default function SponsorShowcaseScreen() {
           name: empresa.nomeEmpresa,
           tier: empresa.categoriaPatrocinio,
           logo: empresa.logo,
-          description: empresa.descricao || empresa.segmento,
-          website: empresa.site
+          description: empresa.descricao || '',
+          website: empresa.site_web || '',
+          telefone: empresa.telefone || '',
+          contatoComercial: empresa.contato_comercial || '',
+          whatsapp: empresa.site || '',
         }));
         setSponsorsList(mappedSponsors);
       } catch (err) {
@@ -127,22 +133,24 @@ export default function SponsorShowcaseScreen() {
         </TouchableOpacity>
       </View>
       {/* Barra de categorias rolável horizontalmente */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriasRow} contentContainerStyle={{ paddingHorizontal: 8, marginBottom: 4 }}>
-        {categorias.map(categoria => (
-          <TouchableOpacity
-            key={categoria}
-            style={[styles.categoriaTab, selectedCategoria === categoria && styles.categoriaTabActive]}
-            onPress={() => setSelectedCategoria(categoria)}
-          >
-            <Text style={[styles.categoriaTabText, selectedCategoria === categoria && styles.categoriaTabTextActive]}>{categoria}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.categoriasContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriasRow} contentContainerStyle={{ paddingHorizontal: 8, marginBottom: 4 }}>
+          {categorias.map(categoria => (
+            <TouchableOpacity
+              key={categoria}
+              style={[styles.categoriaTab, selectedCategoria === categoria && styles.categoriaTabActive]}
+              onPress={() => setSelectedCategoria(categoria)}
+            >
+              <Text style={[styles.categoriaTabText, selectedCategoria === categoria && styles.categoriaTabTextActive]}>{categoria}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
       {/* Listagem de expositores */}
       <FlatList
         data={filteredSponsors}
         keyExtractor={item => item.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 350, paddingTop: 0 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 350, paddingTop: 16 }}
         ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 32 }}>Nenhum expositor encontrado</Text>}
         renderItem={({ item }) => (
           <SponsorCard
@@ -164,22 +172,25 @@ function SponsorCard({ sponsor, isFavorite, checkInId, userId, token, onFavorite
   const [isAnimating, setIsAnimating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => { setIsFav(isFavorite); }, [isFavorite]);
+  useEffect(() => {
+    setIsFav(isFavorite);
+  }, [isFavorite]);
 
   const handleFavoriteClick = async () => {
-    if (isProcessing) return;
+    if (isProcessing || !userId) return;
+    
     setIsAnimating(true);
     setIsProcessing(true);
-    const newFavoriteState = !isFav;
-    setIsFav(newFavoriteState);
+    
     try {
-      if (!newFavoriteState) {
+      if (isFav) {
         // Remover dos favoritos
         const response = await fetch(`${API_BASE}/usuarios-empresas/${checkInId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (!response.ok) throw new Error('Erro ao remover favorito');
+        setIsFav(false);
         onFavoriteChange?.(sponsor.id, false, '');
       } else {
         // Adicionar aos favoritos
@@ -190,14 +201,52 @@ function SponsorCard({ sponsor, isFavorite, checkInId, userId, token, onFavorite
         });
         if (!response.ok) throw new Error('Erro ao adicionar favorito');
         const data = await response.json();
+        setIsFav(true);
         onFavoriteChange?.(sponsor.id, true, data.id);
       }
     } catch (error) {
-      setIsFav(!newFavoriteState);
-      onFavoriteChange?.(sponsor.id, !newFavoriteState, '');
+      console.error('Erro ao atualizar favorito:', error);
+      // Em caso de erro, mantém o estado anterior
+      setIsFav(!isFav);
+      onFavoriteChange?.(sponsor.id, !isFav, '');
     } finally {
       setIsProcessing(false);
       setTimeout(() => setIsAnimating(false), 200);
+    }
+  };
+
+  // Função para abrir o discador
+  const handlePhonePress = () => {
+    if (sponsor.telefone) {
+      Linking.openURL(`tel:${sponsor.telefone}`);
+    }
+  };
+
+  // Função para abrir o site
+  const handleWebsitePress = () => {
+    if (sponsor.website) {
+      Linking.openURL(sponsor.website.startsWith('http') ? sponsor.website : `https://${sponsor.website}`);
+    }
+  };
+
+  // Função para abrir o whatsapp (usando o campo já existente)
+  const handleWhatsappPress = () => {
+    if (sponsor.whatsapp) {
+      try {
+        // Extrair o número do telefone da URL
+        const match = sponsor.whatsapp.match(/wa\.me\/(\d+)/);
+        if (match && match[1]) {
+          const numero = match[1];
+          // Criar URL usando o formato whatsapp://send
+          const whatsappUrl = `whatsapp://send?phone=${numero}&text=Olá,%20gostaria%20de%20saber%20mais%20sobre%20seu%20serviço!%20vim%20do%20evento%20da%20Iima!`;
+          console.log("Whatsapp URL", whatsappUrl);
+          Linking.openURL(whatsappUrl);
+        } else {
+          console.error("Formato de URL do WhatsApp inválido");
+        }
+      } catch (error) {
+        console.error("Erro ao processar URL do WhatsApp:", error);
+      }
     }
   };
 
@@ -216,11 +265,28 @@ function SponsorCard({ sponsor, isFavorite, checkInId, userId, token, onFavorite
         <View style={styles.badge}><Text style={styles.badgeText}>{sponsor.tier}</Text></View>
       </View>
       <Text style={styles.cardTitle}>{sponsor.name}</Text>
-      <Text style={styles.cardDesc}>{sponsor.description}</Text>
-      <TouchableOpacity style={styles.whatsappButton} onPress={() => Linking.openURL(sponsor.website)}>
-        <Text style={styles.whatsappText}>Whatsapp</Text>
-        <Ionicons name="open-outline" size={18} color="#2563eb" style={{ marginLeft: 6 }} />
-      </TouchableOpacity>
+      {sponsor.contatoComercial ? (
+        <View style={styles.contatoComercialContainer}>
+          <Text style={styles.contatoComercialLabel}>Comercial: </Text>
+          <Text style={styles.contatoComercialText}>{sponsor.contatoComercial}</Text>
+        </View>
+      ) : null}
+      {/* Descrição abaixo da categoria, se existir */}
+      {sponsor.description ? (
+        <Text style={styles.cardDesc}>{sponsor.description}</Text>
+      ) : null}
+      {/* Botões de contato */}
+      <View style={styles.contactButtonsRow}>
+        <TouchableOpacity style={styles.contactButton} onPress={handlePhonePress} disabled={!sponsor.telefone}>
+          <Image source={telefoneIcon} style={styles.contactIcon} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.contactButton} onPress={handleWebsitePress} disabled={!sponsor.website}>
+          <Image source={websiteIcon} style={styles.contactIcon} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.contactButton} onPress={handleWhatsappPress} disabled={!sponsor.whatsapp}>
+          <Image source={whatsappIcon} style={styles.contactIcon} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -232,7 +298,15 @@ const styles = StyleSheet.create({
   favButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#e5e7eb' },
   favButtonActive: { backgroundColor: '#e11d48', borderColor: '#e11d48' },
   favButtonText: { color: '#e11d48', fontWeight: 'bold' },
-  categoriasRow: { flexDirection: 'row', marginBottom: 12 },
+  categoriasContainer: {
+    backgroundColor: '#f3f7fd',
+    paddingVertical: 8,
+    marginBottom: 8,
+    zIndex: 1,
+  },
+  categoriasRow: { 
+    flexDirection: 'row',
+  },
   categoriaTab: {
     backgroundColor: '#f3f7fd',
     borderRadius: 8,
@@ -256,6 +330,20 @@ const styles = StyleSheet.create({
   badgeText: { color: '#2563eb', fontSize: 12, fontWeight: 'bold' },
   cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#101828', marginBottom: 2 },
   cardDesc: { fontSize: 14, color: '#3a4a5c', marginBottom: 8 },
-  whatsappButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3f7fd', borderRadius: 8, paddingVertical: 10, justifyContent: 'center', marginTop: 8 },
-  whatsappText: { color: '#2563eb', fontWeight: 'bold', fontSize: 16 },
+  contactButtonsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  contactButton: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f7fd', borderRadius: 8, height: 44, marginHorizontal: 4 },
+  contactIcon: { width: 28, height: 28, resizeMode: 'contain' },
+  contatoComercialContainer: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  contatoComercialLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#101828',
+  },
+  contatoComercialText: {
+    fontSize: 14,
+    color: '#3a4a5c',
+  },
 }); 
