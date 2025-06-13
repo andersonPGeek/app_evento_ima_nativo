@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, FlatList, Modal, Image, StyleSheet, ScrollView, SafeAreaView, Platform, Linking, Alert, KeyboardAvoidingView } from 'react-native';
-import { Ionicons, MaterialIcons, Feather, AntDesign } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, Feather, AntDesign, FontAwesome5 } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { WebView } from 'react-native-webview';
 import { format } from 'date-fns';
@@ -46,6 +46,7 @@ export default function EventScheduleScreen({ route }) {
   const eventDataFetchedRef = useRef(false);
   const lecturesFetchedRef = useRef({});
   const { user, token } = useAuth();
+  const [selectedSpeakerIndexes, setSelectedSpeakerIndexes] = useState({});
 
   // Verificação do eventId e recarregamento dos dados
   useEffect(() => {
@@ -119,34 +120,61 @@ export default function EventScheduleScreen({ route }) {
     const fetchLectureDetails = async () => {
       try {
         setIsLoadingLectures(true);
-        const url = `${API_BASE}/programacao_evento/${eventId}/${selectedStage}/${selectedTrack}`;
+        const url = `${API_BASE}/programacao_evento/new/${eventId}/${selectedStage}/${selectedTrack}`;
         const response = await fetch(url);
         if (response.status === 404) { setSessions([]); return; }
         if (!response.ok) throw new Error(`Erro ao buscar detalhes das palestras: ${response.status}`);
         const data = await response.json();
-        const formattedSessions = data.palestras?.map((lecture) => ({
-          id: lecture.id || Math.random().toString(36).substr(2, 9),
-          lectureId: lecture.id,
-          title: lecture.titulo_palestra,
-          description: lecture.descricao_palestra,
-          speaker: {
-            name: lecture.nome_palestrante || '',
-            avatar: lecture.foto_palestrante || '',
-            role: lecture.cargo_palestrante && lecture.empresa_palestrante ? `${lecture.cargo_palestrante} @ ${lecture.empresa_palestrante}` : '',
-            bio: lecture.minibio_palestrante || '',
+        const formattedSessions = data.palestras?.map((lecture) => {
+          // Montar palestrantes
+          let speakers = (lecture.palestrantes || []).map((p) => ({
+            id: p.id,
+            name: p.nome_palestrante || '',
+            avatar: p.foto_palestrante || '',
+            role: p.cargo_palestrante && p.empresa_palestrante ? `${p.cargo_palestrante} @ ${p.empresa_palestrante}` : '',
+            bio: p.minibio_palestrante || '',
             social: {
-              linkedin: lecture.linkedin_palestrante || null,
-              instagram: lecture.instagram_palestrante || null,
-              facebook: lecture.facebook_palestrante || null
-            }
-          },
-          track: lecture.nometrilha,
-          stage: lecture.nomepalco,
-          location: lecture.local,
-          duration: lecture.duracao?.minutes !== undefined ? `${lecture.duracao.minutes} min` : `${lecture.duracao.hours} h`,
-          time: formatFirestoreDate(lecture.hora),
-          type: lecture.tipo || 'Palestra'
-        })) || [];
+              linkedin: p.linkedin_palestrante || null,
+              instagram: p.instagram_palestrante || null,
+              facebook: p.facebook_palestrante || null
+            },
+            isModerator: false
+          }));
+          // Se houver moderador válido, adiciona na frente
+          const m = lecture.moderador;
+          const hasModerator = m && (m.nome_palestrante || m.foto_palestrante || m.id);
+          if (hasModerator) {
+            speakers = [
+              {
+                id: m.id || `mod-${lecture.id}`,
+                name: m.nome_palestrante || 'Moderador',
+                avatar: m.foto_palestrante || '',
+                role: m.cargo_palestrante && m.empresa_palestrante ? `${m.cargo_palestrante} @ ${m.empresa_palestrante}` : '',
+                bio: '',
+                social: {
+                  linkedin: m.linkedin_palestrante || null,
+                  instagram: m.instagram_palestrante || null,
+                  facebook: m.facebook_palestrante || null
+                },
+                isModerator: true
+              },
+              ...speakers
+            ];
+          }
+          return {
+            id: lecture.id || Math.random().toString(36).substr(2, 9),
+            lectureId: lecture.id,
+            title: lecture.titulo_palestra,
+            description: lecture.descricao_palestra,
+            speakers,
+            track: lecture.nometrilha,
+            stage: lecture.nomepalco,
+            location: lecture.local,
+            duration: lecture.duracao?.minutes !== undefined ? `${lecture.duracao.minutes} min` : `${lecture.duracao.hours} h`,
+            time: formatFirestoreDate(lecture.hora),
+            type: lecture.tipo || 'Palestra'
+          };
+        }) || [];
         setSessions(formattedSessions);
       } catch (err) {
         setError(err.message || 'Erro desconhecido');
@@ -160,13 +188,124 @@ export default function EventScheduleScreen({ route }) {
   // Filtros e agrupamento
   const filteredSessions = searchQuery.trim() === ''
     ? sessions
-    : sessions.filter((session) => (session.speaker?.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
+    : sessions.filter((session) => (session.speakers?.length > 0 ? session.speakers[0].name : '').toLowerCase().includes(searchQuery.toLowerCase()));
   const timeSlots = filteredSessions.reduce((acc, session) => {
     const existingSlot = acc.find(slot => slot.time === session.time);
     if (existingSlot) existingSlot.sessions.push(session);
     else acc.push({ time: session.time || '', sessions: [session] });
     return acc;
   }, []).sort((a, b) => a.time.localeCompare(b.time));
+
+  // Definir renderItem no escopo correto
+  const renderItem = ({ item: slot }) => (
+    <View style={{ marginBottom: 16 }}>
+      <Text style={styles.timeSlot}>{slot.time}</Text>
+      {slot.sessions.map(session => {
+        // Garante que sempre haja um índice selecionado (0) por padrão
+        const selectedIdx =
+          selectedSpeakerIndexes[session.id] !== undefined
+            ? selectedSpeakerIndexes[session.id]
+            : 0;
+        const hasSpeakers = session.speakers && session.speakers.length > 0;
+        const mainSpeaker = hasSpeakers ? session.speakers[selectedIdx] : null;
+        // Novo: identificar moderador
+        const moderator = hasSpeakers && session.speakers[0]?.isModerator ? session.speakers[0] : null;
+        return (
+          <View key={session.id} style={styles.sessionCardRow}>
+            {/* Infos do card */}
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={0.8}
+              onPress={() => { setSelectedSession(session); setRating(0); }}
+            >
+              <View style={styles.sessionHeaderInfo}>
+                <View style={styles.badgesRow}>
+                  <View style={styles.badge}><Text style={styles.badgeText}>{session.stage}</Text></View>
+                  <View style={styles.badge}><Text style={styles.badgeText}>{session.track}</Text></View>
+                </View>
+                <Text style={styles.sessionTitle}>{session.title}</Text>
+                <View style={{ height: 6 }} />
+                <View style={styles.sessionInfoRow}>
+                  <Ionicons name="time" size={16} color="#101828" style={{ marginRight: 4 }} />
+                  <Text style={styles.sessionInfo}>{session.time} ({session.duration})</Text>
+                </View>
+                <View style={{ height: 6 }} />
+                {moderator && moderator.name ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                    <Text style={{ fontWeight: 'bold', color: '#2563eb', fontSize: 13 }}>Moderador : </Text>
+                    <Text style={{ color: '#101828', fontSize: 13 }}>{moderator.name}</Text>
+                  </View>
+                ) : null}
+                {mainSpeaker && !mainSpeaker.isModerator && (
+                  <>
+                    <View style={{ height: 6 }} />
+                    <Text style={styles.speakerName}>{mainSpeaker.name}</Text>
+                    <View style={{ height: 2 }} />
+                    <Text style={styles.speakerRole}>{mainSpeaker.role}</Text>
+                    <View style={{ height: 6 }} />
+                  </>
+                )}
+                <View style={styles.sessionInfoRow}>
+                  <Ionicons name="location" size={16} color="#2563eb" style={{ marginRight: 4 }} />
+                  <Text style={styles.sessionInfo}>{session.location}</Text>
+                </View>
+                {/* Carrossel horizontal de palestrantes - AGORA AQUI */}
+                {session.type === 'Palestra' && hasSpeakers ? (
+                  <View style={styles.horizontalCarouselContainer}>
+                    <FlatList
+                      data={session.speakers}
+                      keyExtractor={sp => sp.id?.toString() || Math.random().toString()}
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.horizontalCarousel}
+                      contentContainerStyle={{ alignItems: 'center' }}
+                      horizontal
+                      renderItem={({ item: speaker, index }) => {
+                        // Borda: moderador sempre azul, palestrante selecionado preta, demais sem borda
+                        let avatarStyle = [styles.avatar];
+                        if (speaker.isModerator) {
+                          avatarStyle.push(styles.avatarModerator);
+                        } else if (selectedIdx === index) {
+                          avatarStyle.push(styles.avatarSelectedBlack);
+                        }
+                        return (
+                          <TouchableOpacity
+                            activeOpacity={speaker.isModerator ? 1 : 0.7}
+                            onPress={() => {
+                              if (!speaker.isModerator) setSelectedSpeakerIndexes(prev => ({ ...prev, [session.id]: index }));
+                            }}
+                            style={{ alignItems: 'center', marginRight: 12 }}
+                          >
+                            {speaker.avatar ? (
+                              <Image
+                                source={{ uri: speaker.avatar }}
+                                style={avatarStyle}
+                              />
+                            ) : (
+                              <View style={styles.avatarPlaceholder}><Ionicons name="person" size={28} color="#888" /></View>
+                            )}
+                            <Text style={styles.speakerNameSmall} numberOfLines={1}>
+                              {speaker.name?.split(' ')[0]}
+                              {speaker.isModerator && speaker.name ? ' (Moderador)' : ''}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      }}
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.verticalCarouselContainer}>
+                    <View style={[styles.avatarPlaceholder, { backgroundColor: '#f3f3f3', justifyContent: 'center', alignItems: 'center' }]}> 
+                      <FontAwesome5 name="coffee" size={32} color="#bfa16a" />
+                    </View>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+        );
+      })}
+    </View>
+  );
 
   // Renderização
   if (!eventId) {
@@ -269,43 +408,7 @@ export default function EventScheduleScreen({ route }) {
             data={timeSlots}
             keyExtractor={slot => slot.time}
             contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-            renderItem={({ item: slot }) => (
-              <View style={{ marginBottom: 16 }}>
-                <Text style={styles.timeSlot}>{slot.time}</Text>
-                {slot.sessions.map(session => (
-                  <TouchableOpacity
-                    key={session.id}
-                    style={styles.sessionCard}
-                    onPress={() => { setSelectedSession(session); setRating(0); }}
-                  >
-                    <View style={styles.sessionHeader}>
-                      {session.speaker.avatar ? (
-                        <Image source={{ uri: session.speaker.avatar }} style={styles.avatar} />
-                      ) : (
-                        <View style={styles.avatarPlaceholder}><Ionicons name="person" size={28} color="#888" /></View>
-                      )}
-                      <View style={{ flex: 1 }}>
-                        <View style={styles.badgesRow}>
-                          <View style={styles.badge}><Text style={styles.badgeText}>{session.stage}</Text></View>
-                          <View style={styles.badge}><Text style={styles.badgeText}>{session.track}</Text></View>
-                        </View>
-                        <Text style={styles.sessionTitle}>{session.title}</Text>
-                        <View style={styles.sessionInfoRow}>
-                          <Ionicons name="time" size={16} color="#101828" style={{ marginRight: 4 }} />
-                          <Text style={styles.sessionInfo}>{session.time} ({session.duration})</Text>
-                        </View>
-                        <Text style={styles.speakerName}>{session.speaker.name}</Text>
-                        <Text style={styles.speakerRole}>{session.speaker.role}</Text>
-                        <View style={styles.sessionInfoRow}>
-                          <Ionicons name="location" size={16} color="#2563eb" style={{ marginRight: 4 }} />
-                          <Text style={styles.sessionInfo}>{session.location}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            renderItem={renderItem}
           />
         )
       )}
@@ -344,6 +447,7 @@ function SessionDetailsModal({ session, user, token, onClose }) {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [hasExistingRating, setHasExistingRating] = useState(false);
+  const [selectedSpeakerIndex, setSelectedSpeakerIndex] = useState(0);
 
   const fetchRating = async () => {
     if (!user || !session.lectureId) return;
@@ -447,35 +551,42 @@ function SessionDetailsModal({ session, user, token, onClose }) {
         </View>
         <Text style={styles.sectionTitle}>Sobre a Palestra</Text>
         <Text style={styles.sessionDescription}>{session.description}</Text>
-        <Text style={styles.sectionTitle}>Palestrante</Text>
-        <View style={styles.speakerRow}>
-          {session.speaker.avatar ? (
-            <Image source={{ uri: session.speaker.avatar }} style={styles.avatarLarge} />
-          ) : (
-            <View style={styles.avatarLargePlaceholder}><Ionicons name="person" size={40} color="#888" /></View>
-          )}
-          <View style={{ flex: 1 }}>
-            <Text style={styles.speakerNameLarge}>{session.speaker.name}</Text>
-            <Text style={styles.speakerRole}>{session.speaker.role}</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-              {session.speaker.social?.linkedin ? (
-                <TouchableOpacity onPress={() => openSocial(session.speaker.social.linkedin)}>
-                  <AntDesign name="linkedin-square" size={24} color="#2563eb" />
-                </TouchableOpacity>
-              ) : null}
-              {session.speaker.social?.instagram ? (
-                <TouchableOpacity onPress={() => openSocial(session.speaker.social.instagram)}>
-                  <AntDesign name="instagram" size={24} color="#d62976" />
-                </TouchableOpacity>
-              ) : null}
-              {session.speaker.social?.facebook ? (
-                <TouchableOpacity onPress={() => openSocial(session.speaker.social.facebook)}>
-                  <AntDesign name="facebook-square" size={24} color="#1877f3" />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </View>
-        </View>
+        {/* Lista de palestrantes */}
+        {session.speakers && session.speakers.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Palestrantes</Text>
+            {session.speakers.map((speaker, idx) => (
+              <View key={speaker.id || idx} style={styles.speakerRow}>
+                {speaker.avatar ? (
+                  <Image source={{ uri: speaker.avatar }} style={styles.avatarLarge} />
+                ) : (
+                  <View style={styles.avatarLargePlaceholder}><Ionicons name="person" size={40} color="#888" /></View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.speakerNameLarge}>{speaker.name}</Text>
+                  <Text style={styles.speakerRole}>{speaker.role}</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                    {speaker.social?.linkedin && (
+                      <TouchableOpacity onPress={() => openSocial(speaker.social.linkedin)}>
+                        <AntDesign name="linkedin-square" size={24} color="#2563eb" />
+                      </TouchableOpacity>
+                    )}
+                    {speaker.social?.instagram && (
+                      <TouchableOpacity onPress={() => openSocial(speaker.social.instagram)}>
+                        <AntDesign name="instagram" size={24} color="#d62976" />
+                      </TouchableOpacity>
+                    )}
+                    {speaker.social?.facebook && (
+                      <TouchableOpacity onPress={() => openSocial(speaker.social.facebook)}>
+                        <AntDesign name="facebook-square" size={24} color="#1877f3" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              </View>
+            ))}
+          </>
+        )}
         <Text style={styles.sectionTitle}>Avaliação</Text>
         {loading && <ActivityIndicator size="small" color="#101828" style={{ marginVertical: 8 }} />}
         {error ? <Text style={{ color: 'red', marginBottom: 8 }}>{error}</Text> : null}
@@ -597,5 +708,61 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  verticalCarouselContainer: {
+    width: 52,
+    height: 156,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  verticalCarousel: {
+    width: 52,
+    height: 156,
+  },
+  sessionCardRow: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    alignItems: 'flex-start',
+  },
+  sessionHeaderInfo: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  avatarSelected: {
+    borderWidth: 2,
+    borderColor: '#2563eb',
+  },
+  avatarSelectedBlack: {
+    borderWidth: 2,
+    borderColor: '#101828',
+  },
+  horizontalCarouselContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+    minHeight: 70,
+    maxHeight: 80,
+  },
+  horizontalCarousel: {
+    flexGrow: 0,
+    height: 70,
+  },
+  avatarModerator: {
+    borderWidth: 3,
+    borderColor: '#2563eb',
+  },
+  speakerNameSmall: {
+    fontSize: 12,
+    color: '#101828',
+    fontWeight: 'bold',
+    marginTop: 2,
+    maxWidth: 60,
+    textAlign: 'center',
   },
 }); 
