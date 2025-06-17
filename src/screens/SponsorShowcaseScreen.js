@@ -261,7 +261,9 @@ function SponsorCard({ sponsor, isFavorite, checkInId, userId, token, onFavorite
             style={[{ marginRight: 8 }, isAnimating && { transform: [{ scale: 0.9 }] }]}
           />
         </TouchableOpacity>
-        <Image source={{ uri: sponsor.logo }} style={styles.logo} />
+        <View style={styles.logoContainer}>
+          <Image source={{ uri: sponsor.logo }} style={styles.logo} resizeMode="contain" />
+        </View>
         <View style={styles.badge}><Text style={styles.badgeText}>{sponsor.tier}</Text></View>
       </View>
       <Text style={styles.cardTitle}>{sponsor.name}</Text>
@@ -325,7 +327,19 @@ const styles = StyleSheet.create({
   categoriaTabTextActive: { color: '#fff' },
   card: { backgroundColor: '#fff', borderRadius: 16, marginBottom: 20, padding: 16, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  logo: { width: 48, height: 48, borderRadius: 8, marginRight: 8, backgroundColor: '#eee' },
+  logoContainer: {
+    width: 100,
+    height: 48,
+    backgroundColor: '#f3f7fd',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  logo: {
+    width: 92,
+    height: 40,
+  },
   badge: { backgroundColor: '#f3f7fd', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 'auto' },
   badgeText: { color: '#2563eb', fontSize: 12, fontWeight: 'bold' },
   cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#101828', marginBottom: 2 },
