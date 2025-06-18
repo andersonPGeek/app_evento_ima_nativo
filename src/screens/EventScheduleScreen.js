@@ -384,7 +384,7 @@ export default function EventScheduleScreen({ route }) {
           <Text style={styles.filterButtonText}>Filtros</Text>
         </TouchableOpacity>
       </View>
-      {/* Filtros recolhidos por padrão */}
+      {/* Filtros (se abertos) */}
       {isFiltersOpen && (
         <View style={styles.filtersBox}>
           <TextInput
@@ -437,8 +437,13 @@ export default function EventScheduleScreen({ route }) {
           </View>
         </View>
       )}
-      {/* Abas pequenas e arredondadas, idênticas ao original */}
-      <View style={styles.tabsContainer}>
+      {/* Palcos SEMPRE abaixo dos filtros */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={[styles.tabsContainer, isFiltersOpen && { marginBottom: 20 }]}
+        contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}
+      >
         {stages.map(stage => (
           <TouchableOpacity
             key={stage.id}
@@ -455,8 +460,8 @@ export default function EventScheduleScreen({ route }) {
           <Ionicons name="map" size={16} color={showingMap ? '#2563eb' : '#101828'} style={{ marginRight: 4 }} />
           <Text style={[styles.tabText, showingMap ? styles.tabTextActive : null]}>Mapa do Evento</Text>
         </TouchableOpacity>
-      </View>
-      {/* Conteúdo das tabs */}
+      </ScrollView>
+      {/* Lista de agenda */}
       {showingMap ? (
         <View style={{ flex: 1, minHeight: 300 }}>
           {eventMapUrl ? (
@@ -716,9 +721,10 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     marginTop: 12,
-    marginBottom: 16,
+    marginBottom: 12,
     paddingHorizontal: 12,
     gap: 8,
+    height: 52,
   },
   tab: {
     flexDirection: 'row',
@@ -729,7 +735,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginRight: 0,
     minHeight: 36,
-    minWidth: 110,
+    maxHeight: 44,
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#e3e7ee',
