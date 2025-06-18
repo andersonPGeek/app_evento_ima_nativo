@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, FlatList, M
 import { Ionicons, MaterialIcons, Feather, AntDesign, FontAwesome5 } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { WebView } from 'react-native-webview';
-import { format } from 'date-fns';
+import { format, addDays, isAfter, isBefore, isEqual, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,7 +26,7 @@ function formatFirestoreDate(timestamp) {
 
 export default function EventScheduleScreen({ route }) {
   const navigation = useNavigation();
-  const eventId = route?.params?.eventId;
+  const { eventId, dataEvento, dataFimEvento } = route?.params || {};
   const [stages, setStages] = useState([]);
   const [tracks, setTracks] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -47,6 +47,10 @@ export default function EventScheduleScreen({ route }) {
   const lecturesFetchedRef = useRef({});
   const { user, token } = useAuth();
   const [selectedSpeakerIndexes, setSelectedSpeakerIndexes] = useState({});
+  const [eventStartDate, setEventStartDate] = useState(null);
+  const [eventEndDate, setEventEndDate] = useState(null);
+  const [availableDates, setAvailableDates] = useState([]);
+  const [selectedAgendaDate, setSelectedAgendaDate] = useState(null);
 
   // Verificação do eventId e recarregamento dos dados
   useEffect(() => {
@@ -70,6 +74,23 @@ export default function EventScheduleScreen({ route }) {
     fetchEventData();
   }, [eventId, navigation]);
 
+  // useEffect para montar o array de datas disponíveis a partir dos params, se existirem
+  useEffect(() => {
+    let start, end;
+    if (dataEvento && dataFimEvento) {
+      start = new Date(dataEvento._seconds ? dataEvento._seconds * 1000 : dataEvento);
+      end = new Date(dataFimEvento._seconds ? dataFimEvento._seconds * 1000 : dataFimEvento);
+      let dates = [];
+      for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
+        dates.push(new Date(d));
+      }
+      setAvailableDates(dates);
+      setEventStartDate(start);
+      setEventEndDate(end);
+      setSelectedAgendaDate(format(start, 'yyyy-MM-dd'));
+    }
+  }, [dataEvento, dataFimEvento]);
+
   const fetchEventData = async () => {
     if (!eventId) return;
     
@@ -83,13 +104,30 @@ export default function EventScheduleScreen({ route }) {
       setSelectedStage('');
       setEventMapUrl(null);
       setError(null);
-      
+      // Só monta as datas se não vieram dos params
+      if (!(dataEvento && dataFimEvento)) {
+        setAvailableDates([]);
+        setSelectedAgendaDate(null);
+        setEventStartDate(null);
+        setEventEndDate(null);
+      }
       const eventResponse = await fetch(`${API_BASE}/eventos/${eventId}`);
       if (!eventResponse.ok) throw new Error('Falha ao buscar dados do evento');
       const eventData = await eventResponse.json();
-      if (eventData.dataInicio && eventData.dataFim) {
+      if (eventData.dataInicio && eventData.dataFim && !(dataEvento && dataFimEvento)) {
         setEventDates({ dataInicio: eventData.dataInicio, dataFim: eventData.dataFim });
         setSelectedDate(new Date(eventData.dataInicio._seconds * 1000));
+        // Novo: gerar array de datas disponíveis
+        const start = new Date(eventData.dataInicio._seconds * 1000);
+        const end = new Date(eventData.dataFim._seconds * 1000);
+        let dates = [];
+        for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
+          dates.push(new Date(d));
+        }
+        setAvailableDates(dates);
+        setEventStartDate(start);
+        setEventEndDate(end);
+        setSelectedAgendaDate(format(start, 'yyyy-MM-dd'));
       }
       if (eventData.mapaEvento) setEventMapUrl(eventData.mapaEvento);
       const agendaResponse = await fetch(`${API_BASE}/agenda/evento/${eventId}`);
@@ -172,7 +210,8 @@ export default function EventScheduleScreen({ route }) {
             location: lecture.local,
             duration: lecture.duracao?.minutes !== undefined ? `${lecture.duracao.minutes} min` : `${lecture.duracao.hours} h`,
             time: formatFirestoreDate(lecture.hora),
-            type: lecture.tipo || 'Palestra'
+            type: lecture.tipo || 'Palestra',
+            dataProgramacao: lecture.dataProgramacao || null,
           };
         }) || [];
         setSessions(formattedSessions);
@@ -187,8 +226,17 @@ export default function EventScheduleScreen({ route }) {
 
   // Filtros e agrupamento
   const filteredSessions = searchQuery.trim() === ''
-    ? sessions
-    : sessions.filter((session) => (session.speakers?.length > 0 ? session.speakers[0].name : '').toLowerCase().includes(searchQuery.toLowerCase()));
+    ? sessions.filter((session) => {
+        if (!selectedAgendaDate) return true;
+        if (!session.dataProgramacao) return true;
+        // session.dataProgramacao pode ser string ISO
+        return session.dataProgramacao.slice(0, 10) === selectedAgendaDate;
+      })
+    : sessions.filter((session) => {
+        if (!selectedAgendaDate) return (session.speakers?.length > 0 ? session.speakers[0].name : '').toLowerCase().includes(searchQuery.toLowerCase());
+        if (!session.dataProgramacao) return (session.speakers?.length > 0 ? session.speakers[0].name : '').toLowerCase().includes(searchQuery.toLowerCase());
+        return session.dataProgramacao.slice(0, 10) === selectedAgendaDate && (session.speakers?.length > 0 ? session.speakers[0].name : '').toLowerCase().includes(searchQuery.toLowerCase());
+      });
   const timeSlots = filteredSessions.reduce((acc, session) => {
     const existingSlot = acc.find(slot => slot.time === session.time);
     if (existingSlot) existingSlot.sessions.push(session);
@@ -200,7 +248,7 @@ export default function EventScheduleScreen({ route }) {
   const renderItem = ({ item: slot }) => (
     <View style={{ marginBottom: 16 }}>
       <Text style={styles.timeSlot}>{slot.time}</Text>
-      {slot.sessions.map(session => {
+      {slot.sessions.map((session, idx) => {
         // Garante que sempre haja um índice selecionado (0) por padrão
         const selectedIdx =
           selectedSpeakerIndexes[session.id] !== undefined
@@ -211,7 +259,7 @@ export default function EventScheduleScreen({ route }) {
         // Novo: identificar moderador
         const moderator = hasSpeakers && session.speakers[0]?.isModerator ? session.speakers[0] : null;
         return (
-          <View key={session.id} style={styles.sessionCardRow}>
+          <View key={session.id + '-' + (session.dataProgramacao || '') + '-' + idx} style={styles.sessionCardRow}>
             {/* Infos do card */}
             <TouchableOpacity
               style={{ flex: 1 }}
@@ -345,6 +393,34 @@ export default function EventScheduleScreen({ route }) {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+          {/* Filtro de data */}
+          {availableDates && availableDates.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              {availableDates.map((dateObj, idx) => {
+                const dateStr = format(dateObj, 'yyyy-MM-dd');
+                return (
+                  <TouchableOpacity
+                    key={dateStr + '-' + idx}
+                    style={{
+                      backgroundColor: selectedAgendaDate === dateStr ? '#2563eb' : '#fff',
+                      borderRadius: 8,
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      marginRight: 8,
+                      borderWidth: 1.5,
+                      borderColor: selectedAgendaDate === dateStr ? '#2563eb' : '#e3e7ee',
+                    }}
+                    onPress={() => setSelectedAgendaDate(dateStr)}
+                  >
+                    <Text style={{ color: selectedAgendaDate === dateStr ? '#fff' : '#101828', fontWeight: 'bold' }}>
+                      {format(dateObj, 'dd/MM/yyyy')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+          {/* Filtro de trilha */}
           <View style={styles.pickerRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>Trilha</Text>
@@ -406,7 +482,7 @@ export default function EventScheduleScreen({ route }) {
         ) : (
           <FlatList
             data={timeSlots}
-            keyExtractor={slot => slot.time}
+            keyExtractor={slot => slot.time + '-' + (slot.sessions[0]?.id || Math.random())}
             contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
             renderItem={renderItem}
           />
