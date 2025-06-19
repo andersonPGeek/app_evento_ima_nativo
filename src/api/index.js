@@ -25,4 +25,8 @@ export const checkinApi = async (codigoQr, companyId, token) => {
   return axios.post(`${API_BASE}/checkins/estande/${codigoQr}/${companyId}`, {}, {
     headers: { Authorization: `Bearer ${token}` },
   });
+};
+
+export const verificarCodigoApi = async (codigo) => {
+  return axios.get(`${API_BASE}/auth/verificar-codigo/${codigo}`);
 }; 

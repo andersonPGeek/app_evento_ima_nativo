@@ -41,10 +41,13 @@ export default function CheckinScreen() {
       const companyId = empresaRes.data.data.ID_empresa;
       // Fazer checkin
       await checkinApi(data, companyId, token);
+      
       setFeedback('success');
       setMessage('Checkin Realizado');
     } catch (err) {
       const apiMessage = err.response?.data?.message;
+      console.log('ApiMessage:',apiMessage);
+      console.log('ApiMessage Error:',err);
       if (apiMessage === 'Usuário já realizou checkin neste estande') {
         setFeedback('warning');
         setMessage(apiMessage);
