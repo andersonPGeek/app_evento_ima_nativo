@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, FlatList, Modal, Image, StyleSheet, ScrollView, SafeAreaView, Platform, Linking, Alert, KeyboardAvoidingView } from 'react-native';
 import { Ionicons, MaterialIcons, Feather, AntDesign, FontAwesome5 } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -51,6 +51,7 @@ export default function EventScheduleScreen({ route }) {
   const [eventEndDate, setEventEndDate] = useState(null);
   const [availableDates, setAvailableDates] = useState([]);
   const [selectedAgendaDate, setSelectedAgendaDate] = useState(null);
+  const [agendaCache, setAgendaCache] = useState({});
 
   // Verificação do eventId e recarregamento dos dados
   useEffect(() => {
@@ -150,79 +151,87 @@ export default function EventScheduleScreen({ route }) {
     if (stages.length > 0 && !selectedStage) setSelectedStage(stages[0].id);
   }, [tracks, stages]);
 
+  // Função para buscar agenda com cache
+  const fetchAgenda = useCallback(async (eventId, palcoId, trilhaId) => {
+    const cacheKey = `${eventId}-${palcoId}-${trilhaId}`;
+    if (agendaCache[cacheKey]) {
+      setSessions(agendaCache[cacheKey]);
+      return;
+    }
+    setIsLoadingLectures(true);
+    try {
+      const url = `${API_BASE}/programacao_evento/new/${eventId}/${palcoId}/${trilhaId}`;
+      const response = await fetch(url);
+      if (response.status === 404) {
+        setSessions([]);
+        setAgendaCache(prev => ({ ...prev, [cacheKey]: [] }));
+        return;
+      }
+      if (!response.ok) throw new Error(`Erro ao buscar detalhes das palestras: ${response.status}`);
+      const data = await response.json();
+      const formattedSessions = data.palestras?.map((lecture) => {
+        let speakers = (lecture.palestrantes || []).map((p) => ({
+          id: p.id,
+          name: p.nome_palestrante || '',
+          avatar: p.foto_palestrante || '',
+          role: p.cargo_palestrante && p.empresa_palestrante ? `${p.cargo_palestrante} @ ${p.empresa_palestrante}` : '',
+          bio: p.minibio_palestrante || '',
+          social: {
+            linkedin: p.linkedin_palestrante || null,
+            instagram: p.instagram_palestrante || null,
+            facebook: p.facebook_palestrante || null
+          },
+          isModerator: false
+        }));
+        const m = lecture.moderador;
+        const hasModerator = m && (m.nome_palestrante || m.foto_palestrante || m.id);
+        if (hasModerator) {
+          speakers = [
+            {
+              id: m.id || `mod-${lecture.id}`,
+              name: m.nome_palestrante || 'Moderador',
+              avatar: m.foto_palestrante || '',
+              role: m.cargo_palestrante && m.empresa_palestrante ? `${m.cargo_palestrante} @ ${m.empresa_palestrante}` : '',
+              bio: '',
+              social: {
+                linkedin: m.linkedin_palestrante || null,
+                instagram: m.instagram_palestrante || null,
+                facebook: m.facebook_palestrante || null
+              },
+              isModerator: true
+            },
+            ...speakers
+          ];
+        }
+        return {
+          id: lecture.id || Math.random().toString(36).substr(2, 9),
+          lectureId: lecture.id,
+          title: lecture.titulo_palestra,
+          description: lecture.descricao_palestra,
+          speakers,
+          track: lecture.nometrilha,
+          stage: lecture.nomepalco,
+          location: lecture.local,
+          duration: lecture.duracao?.minutes !== undefined ? `${lecture.duracao.minutes} min` : `${lecture.duracao.hours} h`,
+          time: formatFirestoreDate(lecture.hora),
+          type: lecture.tipo || 'Palestra',
+          dataProgramacao: lecture.dataProgramacao || null,
+        };
+      }) || [];
+      setSessions(formattedSessions);
+      setAgendaCache(prev => ({ ...prev, [cacheKey]: formattedSessions }));
+    } catch (err) {
+      setError(err.message || 'Erro desconhecido');
+    } finally {
+      setIsLoadingLectures(false);
+    }
+  }, [agendaCache]);
+
+  // useEffect para buscar agenda usando cache
   useEffect(() => {
     if (!eventId || !selectedTrack || !selectedStage) return;
-    const fetchKey = `${eventId}-${selectedStage}-${selectedTrack}`;
-    if (lecturesFetchedRef.current[fetchKey]) return;
-    lecturesFetchedRef.current[fetchKey] = true;
-    const fetchLectureDetails = async () => {
-      try {
-        setIsLoadingLectures(true);
-        const url = `${API_BASE}/programacao_evento/new/${eventId}/${selectedStage}/${selectedTrack}`;
-        const response = await fetch(url);
-        if (response.status === 404) { setSessions([]); return; }
-        if (!response.ok) throw new Error(`Erro ao buscar detalhes das palestras: ${response.status}`);
-        const data = await response.json();
-        const formattedSessions = data.palestras?.map((lecture) => {
-          // Montar palestrantes
-          let speakers = (lecture.palestrantes || []).map((p) => ({
-            id: p.id,
-            name: p.nome_palestrante || '',
-            avatar: p.foto_palestrante || '',
-            role: p.cargo_palestrante && p.empresa_palestrante ? `${p.cargo_palestrante} @ ${p.empresa_palestrante}` : '',
-            bio: p.minibio_palestrante || '',
-            social: {
-              linkedin: p.linkedin_palestrante || null,
-              instagram: p.instagram_palestrante || null,
-              facebook: p.facebook_palestrante || null
-            },
-            isModerator: false
-          }));
-          // Se houver moderador válido, adiciona na frente
-          const m = lecture.moderador;
-          const hasModerator = m && (m.nome_palestrante || m.foto_palestrante || m.id);
-          if (hasModerator) {
-            speakers = [
-              {
-                id: m.id || `mod-${lecture.id}`,
-                name: m.nome_palestrante || 'Moderador',
-                avatar: m.foto_palestrante || '',
-                role: m.cargo_palestrante && m.empresa_palestrante ? `${m.cargo_palestrante} @ ${m.empresa_palestrante}` : '',
-                bio: '',
-                social: {
-                  linkedin: m.linkedin_palestrante || null,
-                  instagram: m.instagram_palestrante || null,
-                  facebook: m.facebook_palestrante || null
-                },
-                isModerator: true
-              },
-              ...speakers
-            ];
-          }
-          return {
-            id: lecture.id || Math.random().toString(36).substr(2, 9),
-            lectureId: lecture.id,
-            title: lecture.titulo_palestra,
-            description: lecture.descricao_palestra,
-            speakers,
-            track: lecture.nometrilha,
-            stage: lecture.nomepalco,
-            location: lecture.local,
-            duration: lecture.duracao?.minutes !== undefined ? `${lecture.duracao.minutes} min` : `${lecture.duracao.hours} h`,
-            time: formatFirestoreDate(lecture.hora),
-            type: lecture.tipo || 'Palestra',
-            dataProgramacao: lecture.dataProgramacao || null,
-          };
-        }) || [];
-        setSessions(formattedSessions);
-      } catch (err) {
-        setError(err.message || 'Erro desconhecido');
-      } finally {
-        setIsLoadingLectures(false);
-      }
-    };
-    fetchLectureDetails();
-  }, [eventId, selectedTrack, selectedStage]);
+    fetchAgenda(eventId, selectedStage, selectedTrack);
+  }, [eventId, selectedTrack, selectedStage, fetchAgenda]);
 
   // Filtros e agrupamento
   const filteredSessions = searchQuery.trim() === ''
@@ -249,15 +258,8 @@ export default function EventScheduleScreen({ route }) {
     <View style={{ marginBottom: 16 }}>
       <Text style={styles.timeSlot}>{slot.time}</Text>
       {slot.sessions.map((session, idx) => {
-        // Garante que sempre haja um índice selecionado (0) por padrão
-        const selectedIdx =
-          selectedSpeakerIndexes[session.id] !== undefined
-            ? selectedSpeakerIndexes[session.id]
-            : 0;
-        const hasSpeakers = session.speakers && session.speakers.length > 0;
-        const mainSpeaker = hasSpeakers ? session.speakers[selectedIdx] : null;
         // Novo: identificar moderador
-        const moderator = hasSpeakers && session.speakers[0]?.isModerator ? session.speakers[0] : null;
+        const moderator = session.speakers && session.speakers[0]?.isModerator ? session.speakers[0] : null;
         return (
           <View key={session.id + '-' + (session.dataProgramacao || '') + '-' + idx} style={styles.sessionCardRow}>
             {/* Infos do card */}
@@ -271,7 +273,9 @@ export default function EventScheduleScreen({ route }) {
                   <View style={styles.badge}><Text style={styles.badgeText}>{session.stage}</Text></View>
                   <View style={styles.badge}><Text style={styles.badgeText}>{session.track}</Text></View>
                 </View>
-                <Text style={styles.sessionTitle}>{session.title}</Text>
+                <Text style={styles.sessionTitle}>
+                  {session.type !== 'Palestra' ? session.type : session.title}
+                </Text>
                 <View style={{ height: 6 }} />
                 <View style={styles.sessionInfoRow}>
                   <Ionicons name="time" size={16} color="#101828" style={{ marginRight: 4 }} />
@@ -284,68 +288,57 @@ export default function EventScheduleScreen({ route }) {
                     <Text style={{ color: '#101828', fontSize: 13 }}>{moderator.name}</Text>
                   </View>
                 ) : null}
-                {mainSpeaker && !mainSpeaker.isModerator && (
-                  <>
-                    <View style={{ height: 6 }} />
-                    <Text style={styles.speakerName}>{mainSpeaker.name}</Text>
-                    <View style={{ height: 2 }} />
-                    <Text style={styles.speakerRole}>{mainSpeaker.role}</Text>
-                    <View style={{ height: 6 }} />
-                  </>
-                )}
                 <View style={styles.sessionInfoRow}>
                   <Ionicons name="location" size={16} color="#2563eb" style={{ marginRight: 4 }} />
                   <Text style={styles.sessionInfo}>{session.location}</Text>
                 </View>
-                {/* Carrossel horizontal de palestrantes - AGORA AQUI */}
-                {session.type === 'Palestra' && hasSpeakers ? (
-                  <View style={styles.horizontalCarouselContainer}>
-                    <FlatList
-                      data={session.speakers}
-                      keyExtractor={sp => sp.id?.toString() || Math.random().toString()}
-                      showsHorizontalScrollIndicator={false}
-                      style={styles.horizontalCarousel}
-                      contentContainerStyle={{ alignItems: 'center' }}
-                      horizontal
-                      renderItem={({ item: speaker, index }) => {
-                        // Borda: moderador sempre azul, palestrante selecionado preta, demais sem borda
-                        let avatarStyle = [styles.avatar];
-                        if (speaker.isModerator) {
-                          avatarStyle.push(styles.avatarModerator);
-                        } else if (selectedIdx === index) {
-                          avatarStyle.push(styles.avatarSelectedBlack);
-                        }
-                        return (
-                          <TouchableOpacity
-                            activeOpacity={speaker.isModerator ? 1 : 0.7}
-                            onPress={() => {
-                              if (!speaker.isModerator) setSelectedSpeakerIndexes(prev => ({ ...prev, [session.id]: index }));
-                            }}
-                            style={{ alignItems: 'center', marginRight: 12 }}
-                          >
-                            {speaker.avatar ? (
-                              <Image
-                                source={{ uri: speaker.avatar }}
-                                style={avatarStyle}
-                              />
-                            ) : (
-                              <View style={styles.avatarPlaceholder}><Ionicons name="person" size={28} color="#888" /></View>
-                            )}
-                            <Text style={styles.speakerNameSmall} numberOfLines={1}>
-                              {speaker.name?.split(' ')[0]}
-                              {speaker.isModerator && speaker.name ? ' (Moderador)' : ''}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      }}
-                    />
-                  </View>
+                {session.type !== 'Palestra' ? (
+                  <Image
+                    source={require('../../assets/almoco.png')}
+                    style={styles.specialImage}
+                    resizeMode="cover"
+                  />
                 ) : (
-                  <View style={styles.verticalCarouselContainer}>
-                    <View style={[styles.avatarPlaceholder, { backgroundColor: '#f3f3f3', justifyContent: 'center', alignItems: 'center' }]}> 
-                      <FontAwesome5 name="coffee" size={32} color="#bfa16a" />
+                  session.speakers && session.speakers.length > 0 ? (
+                    <View style={styles.horizontalCarouselContainer}>
+                      <FlatList
+                        data={session.speakers}
+                        keyExtractor={sp => sp.id?.toString() || Math.random().toString()}
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.horizontalCarousel}
+                        contentContainerStyle={{ alignItems: 'center' }}
+                        horizontal
+                        renderItem={({ item: speaker }) => {
+                          let avatarStyle = [styles.avatar];
+                          if (speaker.isModerator) {
+                            avatarStyle.push(styles.avatarModerator);
+                          }
+                          return (
+                            <View style={{ alignItems: 'center', marginRight: 12 }}>
+                              {speaker.avatar ? (
+                                <Image
+                                  source={{ uri: speaker.avatar }}
+                                  style={avatarStyle}
+                                />
+                              ) : (
+                                <View style={styles.avatarPlaceholder}><Ionicons name="person" size={28} color="#888" /></View>
+                              )}
+                              <Text style={styles.speakerNameSmall} numberOfLines={1}>
+                                {speaker.name?.split(' ')[0]}
+                                {speaker.isModerator && speaker.name ? ' (Moderador)' : ''}
+                              </Text>
+                            </View>
+                          );
+                        }}
+                      />
                     </View>
-                  </View>
+                  ) : (
+                    <View style={styles.verticalCarouselContainer}>
+                      <View style={[styles.avatarPlaceholder, { backgroundColor: '#f3f3f3', justifyContent: 'center', alignItems: 'center' }]}> 
+                        <FontAwesome5 name="coffee" size={32} color="#bfa16a" />
+                      </View>
+                    </View>
+                  )
                 )}
               </View>
             </TouchableOpacity>
@@ -384,7 +377,6 @@ export default function EventScheduleScreen({ route }) {
           <Text style={styles.filterButtonText}>Filtros</Text>
         </TouchableOpacity>
       </View>
-      {/* Filtros (se abertos) */}
       {isFiltersOpen && (
         <View style={styles.filtersBox}>
           <TextInput
@@ -393,33 +385,6 @@ export default function EventScheduleScreen({ route }) {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          {/* Filtro de data */}
-          {availableDates && availableDates.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-              {availableDates.map((dateObj, idx) => {
-                const dateStr = format(dateObj, 'yyyy-MM-dd');
-                return (
-                  <TouchableOpacity
-                    key={dateStr + '-' + idx}
-                    style={{
-                      backgroundColor: selectedAgendaDate === dateStr ? '#2563eb' : '#fff',
-                      borderRadius: 8,
-                      paddingHorizontal: 14,
-                      paddingVertical: 8,
-                      marginRight: 8,
-                      borderWidth: 1.5,
-                      borderColor: selectedAgendaDate === dateStr ? '#2563eb' : '#e3e7ee',
-                    }}
-                    onPress={() => setSelectedAgendaDate(dateStr)}
-                  >
-                    <Text style={{ color: selectedAgendaDate === dateStr ? '#fff' : '#101828', fontWeight: 'bold' }}>
-                      {format(dateObj, 'dd/MM/yyyy')}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
           {/* Filtro de trilha */}
           <View style={styles.pickerRow}>
             <View style={{ flex: 1 }}>
@@ -437,30 +402,91 @@ export default function EventScheduleScreen({ route }) {
           </View>
         </View>
       )}
-      {/* Palcos SEMPRE abaixo dos filtros */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[styles.tabsContainer, isFiltersOpen && { marginBottom: 20 }]}
-        contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}
-      >
-        {stages.map(stage => (
-          <TouchableOpacity
-            key={stage.id}
-            style={[styles.tab, selectedStage === stage.id && !showingMap ? styles.tabActive : null]}
-            onPress={() => { setShowingMap(false); setSelectedStage(stage.id); }}
-          >
-            <Text style={[styles.tabText, selectedStage === stage.id && !showingMap ? styles.tabTextActive : null]}>{stage.nomePalco}</Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity
-          style={[styles.tab, showingMap ? styles.tabActive : null]}
-          onPress={() => setShowingMap(true)}
+      {/* Botões de data - sempre renderiza o container */}
+      {(() => {
+        let filteredDates = [];
+        if (Array.isArray(availableDates) && availableDates.filter(Boolean).length > 0) {
+          filteredDates = availableDates
+            .filter((dateObj, idx, arr) => {
+              if (!dateObj) return false;
+              const dateStr = format(dateObj, 'yyyy-MM-dd');
+              return arr.findIndex(d => d && format(d, 'yyyy-MM-dd') === dateStr) === idx;
+            });
+          // LOG: keys geradas
+          const keys = filteredDates.map(dateObj => format(dateObj, 'yyyy-MM-dd'));
+        }
+        return (
+          <View style={styles.datesScrollView}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.datesScrollViewContent}
+            >
+              {filteredDates.length > 0
+                ? filteredDates.map((dateObj) => {
+                    const dateStr = format(dateObj, 'yyyy-MM-dd');
+                    return (
+                      <TouchableOpacity
+                        key={dateStr}
+                        style={[
+                          styles.dateButton,
+                          selectedAgendaDate === dateStr && styles.dateButtonActive
+                        ]}
+                        onPress={() => setSelectedAgendaDate(dateStr)}
+                      >
+                        <Text style={[
+                          styles.dateButtonText,
+                          selectedAgendaDate === dateStr && styles.dateButtonTextActive
+                        ]}>
+                          {format(dateObj, 'dd/MM/yyyy')}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })
+                : (
+                  <View style={[styles.dateButton, { opacity: 0.3 }]}> 
+                    <Text style={styles.dateButtonText}>Data</Text>
+                  </View>
+                )
+              }
+            </ScrollView>
+          </View>
+        );
+      })()}
+      {/* Container dos botões de palco - sempre renderiza o container */}
+      <View style={styles.tabsContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsContentContainer}
         >
-          <Ionicons name="map" size={16} color={showingMap ? '#2563eb' : '#101828'} style={{ marginRight: 4 }} />
-          <Text style={[styles.tabText, showingMap ? styles.tabTextActive : null]}>Mapa do Evento</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          {Array.isArray(stages) && stages.length > 0
+            ? stages.map(stage => {
+                return (
+                  <TouchableOpacity
+                    key={stage.id}
+                    style={[styles.tab, selectedStage === stage.id && !showingMap ? styles.tabActive : null]}
+                    onPress={() => { setShowingMap(false); setSelectedStage(stage.id); }}
+                  >
+                    <Text style={[styles.tabText, selectedStage === stage.id && !showingMap ? styles.tabTextActive : null]}>{stage.nomePalco}</Text>
+                  </TouchableOpacity>
+                );
+              })
+            : (
+              <View style={[styles.tab, { opacity: 0.3 }]}> 
+                <Text style={styles.tabText}>Palco</Text>
+              </View>
+            )
+          }
+          <TouchableOpacity
+            style={[styles.tab, showingMap ? styles.tabActive : null]}
+            onPress={() => setShowingMap(true)}
+          >
+            <Ionicons name="map" size={16} color={showingMap ? '#2563eb' : '#101828'} style={{ marginRight: 4 }} />
+            <Text style={[styles.tabText, showingMap ? styles.tabTextActive : null]}>Mapa do Evento</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
       {/* Lista de agenda */}
       {showingMap ? (
         <View style={{ flex: 1, minHeight: 300 }}>
@@ -487,7 +513,11 @@ export default function EventScheduleScreen({ route }) {
         ) : (
           <FlatList
             data={timeSlots}
-            keyExtractor={slot => slot.time + '-' + (slot.sessions[0]?.id || Math.random())}
+            keyExtractor={slot => {
+              const sessionIds = slot.sessions.map(s => s.id).join('_');
+              const key = `${slot.time}-${sessionIds}`;
+              return key;
+            }}
             contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
             renderItem={renderItem}
           />
@@ -668,7 +698,7 @@ function SessionDetailsModal({ session, user, token, onClose }) {
             ))}
           </>
         )}
-        <Text style={styles.sectionTitle}>Avaliação</Text>
+        <Text style={styles.sectionTitle}>Avaliação da Palestra</Text>
         {loading && <ActivityIndicator size="small" color="#101828" style={{ marginVertical: 8 }} />}
         {error ? <Text style={{ color: 'red', marginBottom: 8 }}>{error}</Text> : null}
         {success ? <Text style={{ color: 'green', marginBottom: 8 }}>{success}</Text> : null}
@@ -719,12 +749,15 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, color: '#101828', marginBottom: 4 },
   picker: { backgroundColor: '#fff', borderRadius: 8 },
   tabsContainer: {
-    flexDirection: 'row',
-    marginTop: 12,
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    gap: 8,
     height: 52,
+    marginHorizontal: 16,
+    marginTop: 8,
+    flexDirection: 'row',
+  },
+  tabsContentContainer: {
+    paddingHorizontal: 16,
+    gap: 8,
+    alignItems: 'center',
   },
   tab: {
     flexDirection: 'row',
@@ -846,5 +879,51 @@ const styles = StyleSheet.create({
     marginTop: 2,
     maxWidth: 60,
     textAlign: 'center',
+  },
+  filtersContainer: {
+    backgroundColor: '#f3f7fd',
+  },
+  datesScrollView: {
+    height: 52,
+    marginHorizontal: 16,
+    marginTop: 8,
+  },
+  datesScrollViewContent: {
+    paddingHorizontal: 4,
+    alignItems: 'center',
+  },
+  dateButton: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderWidth: 1.5,
+    borderColor: '#e3e7ee',
+    minHeight: 36,
+    maxHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dateButtonActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  dateButtonText: {
+    color: '#101828',
+    fontWeight: 'bold',
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  dateButtonTextActive: {
+    color: '#fff',
+  },
+  specialImage: {
+    width: '100%',
+    height: 90,
+    borderRadius: 12,
+    marginTop: 12,
+    marginBottom: 8,
+    alignSelf: 'center',
   },
 }); 

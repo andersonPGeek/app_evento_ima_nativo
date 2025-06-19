@@ -238,7 +238,7 @@ function SponsorCard({ sponsor, isFavorite, checkInId, userId, token, onFavorite
         if (match && match[1]) {
           const numero = match[1];
           // Criar URL usando o formato whatsapp://send
-          const whatsappUrl = `whatsapp://send?phone=${numero}&text=Olá,%20gostaria%20de%20saber%20mais%20sobre%20seu%20serviço!%20vim%20do%20evento%20da%20Iima!`;
+          const whatsappUrl = `whatsapp://send?phone=${numero}&text=Ol%C3%A1,%20participei%20do%20evento%20da%20IIMA%20e%20gostaria%20de%20saber%20mais%20sobre%20seu%20servi%C3%A7os.`;
           console.log("Whatsapp URL", whatsappUrl);
           Linking.openURL(whatsappUrl);
         } else {
