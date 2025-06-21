@@ -125,6 +125,7 @@ export default function ForgotPasswordScreen({ navigation }) {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              placeholderTextColor="#888"
             />
             {message ? <Text style={styles.success}>{message}</Text> : null}
             {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -145,17 +146,15 @@ export default function ForgotPasswordScreen({ navigation }) {
                 <TextInput
                   key={idx}
                   ref={ref => refs[`codeInput${idx}`] = ref}
-                  style={styles.codeInput}
+                  style={[styles.codeInput, { color: '#101828' }]}
                   keyboardType="numeric"
                   maxLength={6}
                   value={code[idx]}
                   onChangeText={value => handleCodeChange(value, idx)}
                   returnKeyType="next"
                   textAlign="center"
-                  onPaste={(e) => {
-                    // Para React Native, o onPaste pode não funcionar da mesma forma
-                    // A lógica de colar já está implementada no onChangeText
-                  }}
+                  placeholder="-"
+                  placeholderTextColor="#888"
                 />
               ))}
             </View>

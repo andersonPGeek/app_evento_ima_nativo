@@ -52,18 +52,20 @@ export default function CreatePasswordScreen({ route, navigation }) {
         <Text style={styles.title}>Criar Nova Senha</Text>
         <Text style={styles.subtitle}>Digite sua nova senha e confirme</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: '#111' }]}
           placeholder="Nova Senha"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          placeholderTextColor="#888"
         />
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: '#111' }]}
           placeholder="Confirme a Senha"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry
+          placeholderTextColor="#888"
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {success ? <Text style={styles.success}>{success}</Text> : null}

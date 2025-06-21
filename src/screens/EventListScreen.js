@@ -243,6 +243,7 @@ export default function EventListScreen() {
             placeholder="Buscar palestrante..."
             value={searchText}
             onChangeText={handleSearchChange}
+            placeholderTextColor="#888"
           />
           <View style={styles.searchIconContainer}>
             <Ionicons name="search" size={20} color="#101828" />

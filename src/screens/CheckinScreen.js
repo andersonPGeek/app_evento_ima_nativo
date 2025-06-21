@@ -46,8 +46,6 @@ export default function CheckinScreen() {
       setMessage('Checkin Realizado');
     } catch (err) {
       const apiMessage = err.response?.data?.message;
-      console.log('ApiMessage:',apiMessage);
-      console.log('ApiMessage Error:',err);
       if (apiMessage === 'Usuário já realizou checkin neste estande') {
         setFeedback('warning');
         setMessage(apiMessage);

@@ -266,7 +266,13 @@ export default function EventScheduleScreen({ route }) {
             <TouchableOpacity
               style={{ flex: 1 }}
               activeOpacity={0.8}
-              onPress={() => { setSelectedSession(session); setRating(0); }}
+              onPress={() => { 
+                if (session.type === 'Palestra') {
+                  setSelectedSession(session); 
+                  setRating(0); 
+                }
+              }}
+              disabled={session.type !== 'Palestra'}
             >
               <View style={styles.sessionHeaderInfo}>
                 <View style={styles.badgesRow}>
@@ -288,10 +294,12 @@ export default function EventScheduleScreen({ route }) {
                     <Text style={{ color: '#101828', fontSize: 13 }}>{moderator.name}</Text>
                   </View>
                 ) : null}
-                <View style={styles.sessionInfoRow}>
-                  <Ionicons name="location" size={16} color="#2563eb" style={{ marginRight: 4 }} />
-                  <Text style={styles.sessionInfo}>{session.location}</Text>
-                </View>
+                {session.type === 'Palestra' && (
+                  <View style={styles.sessionInfoRow}>
+                    <Ionicons name="location" size={16} color="#2563eb" style={{ marginRight: 4 }} />
+                    <Text style={styles.sessionInfo}>{session.location}</Text>
+                  </View>
+                )}
                 {session.type !== 'Palestra' ? (
                   <Image
                     source={require('../../assets/almoco.png')}
@@ -384,6 +392,7 @@ export default function EventScheduleScreen({ route }) {
             placeholder="Buscar palestrante..."
             value={searchQuery}
             onChangeText={setSearchQuery}
+            placeholderTextColor="#888"
           />
           {/* Filtro de trilha */}
           <View style={styles.pickerRow}>
@@ -392,7 +401,8 @@ export default function EventScheduleScreen({ route }) {
               <Picker
                 selectedValue={selectedTrack}
                 onValueChange={setSelectedTrack}
-                style={styles.picker}
+                style={[styles.picker, { color: '#101828', borderColor: '#e3e7ee', borderWidth: 1, borderRadius: 8, backgroundColor: '#fff' }]}
+                itemStyle={{ color: '#101828' }}
               >
                 {tracks.map(track => (
                   <Picker.Item key={track.id} label={track.nome} value={track.id} />

@@ -18,6 +18,9 @@ export default function LoginScreen({ navigation, route }) {
     setError('');
     if (email && senha && email === senha) {
       const result = await login(email, senha);
+      console.log('Resultado do login:', result);
+      console.log('Resultado do Sucesso:', result.success);
+      console.log('Resultado do Error:', result.error);
       if (result.success && result.mustChangePassword && result.user && result.token) {
         navigation.replace('CreatePassword', { userId: result.user.id, email, token: result.token });
         return;
@@ -64,14 +67,16 @@ export default function LoginScreen({ navigation, route }) {
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
+          placeholderTextColor="#888"
         />
         <View style={styles.passwordContainer}>
           <TextInput
-            style={styles.inputPassword}
+            style={[styles.inputPassword, { color: '#101828' }]}
             placeholder="Senha"
             value={senha}
             onChangeText={setSenha}
             secureTextEntry={!showPassword}
+            placeholderTextColor="#888"
           />
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
             <Text style={styles.eye}>{showPassword ? '🙈' : '👁️'}</Text>

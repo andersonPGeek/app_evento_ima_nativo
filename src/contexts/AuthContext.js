@@ -123,14 +123,17 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: { ...user, email } };
 
     } catch (error) {
-      // Se o login falhou e é primeiro acesso (email = senha)
-      if (email === senha && !syncedEmails.has(email)) {
-        setLoading(false);
-        return { 
-          success: false, 
-          error: 'sync_required',
-          email: email
-        };
+      
+      if (error.response?.data?.error != 'Credenciais inválidas'){
+          // Se o login falhou e é primeiro acesso (email = senha)
+          if (email === senha && !syncedEmails.has(email)) {
+            setLoading(false);
+            return { 
+              success: false, 
+              error: 'sync_required',
+              email: email
+            };
+          }
       }
 
       // Se não é primeiro acesso ou já tentou sincronizar

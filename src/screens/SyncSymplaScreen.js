@@ -151,6 +151,7 @@ export default function SyncSymplaScreen({ navigation, route }) {
           onChangeText={v => setTicketNumber(maskTicket(v))}
           maxLength={12}
           autoCapitalize="characters"
+          placeholderTextColor="#888"
         />
 
         <TouchableOpacity

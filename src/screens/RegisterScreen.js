@@ -154,19 +154,19 @@ export default function RegisterScreen() {
           {success ? <View style={styles.successBox}><Text style={styles.successText}>{success}</Text></View> : null}
           <View style={styles.formGroup}>
             <Text style={styles.label}>Nome</Text>
-            <TextInput style={styles.input} value={formData.Nome} onChangeText={v => handleChange('Nome', v)} placeholder="" autoCapitalize="words" />
+            <TextInput style={styles.input} value={formData.Nome} onChangeText={v => handleChange('Nome', v)} placeholder="Nome completo" autoCapitalize="words" placeholderTextColor="#888" />
           </View>
           <View style={styles.formGroup}>
             <Text style={styles.label}>CPF</Text>
-            <TextInput style={styles.input} value={formData.CPF} onChangeText={v => handleChange('CPF', v)} placeholder="" keyboardType="numeric" maxLength={14} />
+            <TextInput style={styles.input} value={formData.CPF} onChangeText={v => handleChange('CPF', v)} placeholder="CPF" keyboardType="numeric" maxLength={14} placeholderTextColor="#888" />
           </View>
           <View style={styles.formGroup}>
             <Text style={styles.label}>Telefone</Text>
-            <TextInput style={styles.input} value={formData.Telefone} onChangeText={v => handleChange('Telefone', v)} placeholder="" keyboardType="phone-pad" />
+            <TextInput style={styles.input} value={formData.Telefone} onChangeText={v => handleChange('Telefone', v)} placeholder="Telefone" keyboardType="phone-pad" placeholderTextColor="#888" />
           </View>
           <View style={styles.formGroup}>
             <Text style={styles.label}>Email</Text>
-            <TextInput style={styles.input} value={formData.email} onChangeText={v => handleChange('email', v)} placeholder="" keyboardType="email-address" autoCapitalize="none" />
+            <TextInput style={styles.input} value={formData.email} onChangeText={v => handleChange('email', v)} placeholder="Email" keyboardType="email-address" autoCapitalize="none" placeholderTextColor="#888" />
           </View>
           <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Cadastrar</Text>}
