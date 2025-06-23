@@ -52,6 +52,8 @@ export default function EventScheduleScreen({ route }) {
   const [availableDates, setAvailableDates] = useState([]);
   const [selectedAgendaDate, setSelectedAgendaDate] = useState(null);
   const [agendaCache, setAgendaCache] = useState({});
+  const [selectedSpeakerIndex, setSelectedSpeakerIndex] = useState(0);
+  const [bioModal, setBioModal] = useState({ visible: false, bio: '', name: '' });
 
   // Verificação do eventId e recarregamento dos dados
   useEffect(() => {
@@ -175,7 +177,7 @@ export default function EventScheduleScreen({ route }) {
           name: p.nome_palestrante || '',
           avatar: p.foto_palestrante || '',
           role: p.cargo_palestrante && p.empresa_palestrante ? `${p.cargo_palestrante} @ ${p.empresa_palestrante}` : '',
-          bio: p.minibio_palestrante || '',
+          bio: p.mini_bio|| '',
           social: {
             linkedin: p.linkedin_palestrante || null,
             instagram: p.instagram_palestrante || null,
@@ -192,7 +194,7 @@ export default function EventScheduleScreen({ route }) {
               name: m.nome_palestrante || 'Moderador',
               avatar: m.foto_palestrante || '',
               role: m.cargo_palestrante && m.empresa_palestrante ? `${m.cargo_palestrante} @ ${m.empresa_palestrante}` : '',
-              bio: '',
+              bio: m.mini_bio || m.minibio_palestrante || '',
               social: {
                 linkedin: m.linkedin_palestrante || null,
                 instagram: m.instagram_palestrante || null,
@@ -569,6 +571,10 @@ function SessionDetailsModal({ session, user, token, onClose }) {
   const [error, setError] = useState('');
   const [hasExistingRating, setHasExistingRating] = useState(false);
   const [selectedSpeakerIndex, setSelectedSpeakerIndex] = useState(0);
+  const [bioModal, setBioModal] = useState({ visible: false, bio: '', name: '' });
+
+  const moderators = session.speakers?.filter(s => s.isModerator) || [];
+  const speakers = session.speakers?.filter(s => !s.isModerator) || [];
 
   const fetchRating = async () => {
     if (!user || !session.lectureId) return;
@@ -655,6 +661,44 @@ function SessionDetailsModal({ session, user, token, onClose }) {
     if (url) Linking.openURL(url).catch(() => Alert.alert('Erro', 'Não foi possível abrir o link.'));
   };
 
+  const renderSpeaker = (speaker, idx) => (
+    <View key={speaker.id || idx} style={styles.speakerRow}>
+      <TouchableOpacity
+        onPress={() => {
+          if (speaker.bio) setBioModal({ visible: true, bio: speaker.bio, name: speaker.name });
+        }}
+        activeOpacity={speaker.bio ? 0.7 : 1}
+      >
+        {speaker.avatar ? (
+          <Image source={{ uri: speaker.avatar }} style={styles.avatarLarge} />
+        ) : (
+          <View style={styles.avatarLargePlaceholder}><Ionicons name="person" size={40} color="#888" /></View>
+        )}
+      </TouchableOpacity>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.speakerNameLarge}>{speaker.name}</Text>
+        <Text style={styles.speakerRole}>{speaker.role}</Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+          {speaker.social?.linkedin && (
+            <TouchableOpacity onPress={() => openSocial(speaker.social.linkedin)}>
+              <AntDesign name="linkedin-square" size={24} color="#2563eb" />
+            </TouchableOpacity>
+          )}
+          {speaker.social?.instagram && (
+            <TouchableOpacity onPress={() => openSocial(speaker.social.instagram)}>
+              <AntDesign name="instagram" size={24} color="#d62976" />
+            </TouchableOpacity>
+          )}
+          {speaker.social?.facebook && (
+            <TouchableOpacity onPress={() => openSocial(speaker.social.facebook)}>
+              <AntDesign name="facebook-square" size={24} color="#1877f3" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
@@ -673,45 +717,21 @@ function SessionDetailsModal({ session, user, token, onClose }) {
         <Text style={styles.sectionTitle}>Sobre a Palestra</Text>
         <Text style={styles.sessionDescription}>{session.description}</Text>
         {/* Lista de palestrantes */}
-        {session.speakers && session.speakers.length > 0 && (
+        {moderators.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Moderador</Text>
+            {moderators.map(renderSpeaker)}
+          </>
+        )}
+        {speakers.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>Palestrantes</Text>
-            {session.speakers.map((speaker, idx) => (
-              <View key={speaker.id || idx} style={styles.speakerRow}>
-                {speaker.avatar ? (
-                  <Image source={{ uri: speaker.avatar }} style={styles.avatarLarge} />
-                ) : (
-                  <View style={styles.avatarLargePlaceholder}><Ionicons name="person" size={40} color="#888" /></View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.speakerNameLarge}>{speaker.name}</Text>
-                  <Text style={styles.speakerRole}>{speaker.role}</Text>
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-                    {speaker.social?.linkedin && (
-                      <TouchableOpacity onPress={() => openSocial(speaker.social.linkedin)}>
-                        <AntDesign name="linkedin-square" size={24} color="#2563eb" />
-                      </TouchableOpacity>
-                    )}
-                    {speaker.social?.instagram && (
-                      <TouchableOpacity onPress={() => openSocial(speaker.social.instagram)}>
-                        <AntDesign name="instagram" size={24} color="#d62976" />
-                      </TouchableOpacity>
-                    )}
-                    {speaker.social?.facebook && (
-                      <TouchableOpacity onPress={() => openSocial(speaker.social.facebook)}>
-                        <AntDesign name="facebook-square" size={24} color="#1877f3" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              </View>
-            ))}
+            {speakers.map(renderSpeaker)}
           </>
         )}
         <Text style={styles.sectionTitle}>Avaliação da Palestra</Text>
         {loading && <ActivityIndicator size="small" color="#101828" style={{ marginVertical: 8 }} />}
         {error ? <Text style={{ color: 'red', marginBottom: 8 }}>{error}</Text> : null}
-        {success ? <Text style={{ color: 'green', marginBottom: 8 }}>{success}</Text> : null}
         <View style={styles.ratingRow}>
           {[1,2,3,4,5].map(star => (
             <TouchableOpacity key={star} onPress={() => handleRating(star)} disabled={!user || loading}>
@@ -743,6 +763,25 @@ function SessionDetailsModal({ session, user, token, onClose }) {
           <Text style={{ color: '#888', marginTop: 8 }}>Faça login para avaliar</Text>
         )}
       </ScrollView>
+      {/* Modal para exibir a minibio ao clicar na foto */}
+      <Modal
+        visible={bioModal.visible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setBioModal({ visible: false, bio: '', name: '' })}
+      >
+        <View style={{ flex: 1, backgroundColor: '#0008', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, maxWidth: '85%', maxHeight: '70%' }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12, color: '#101828', textAlign: 'center' }}>{bioModal.name}</Text>
+            <ScrollView style={{ maxHeight: 250 }}>
+              <Text style={{ fontSize: 15, color: '#3a4a5c', textAlign: 'justify' }}>{bioModal.bio}</Text>
+            </ScrollView>
+            <TouchableOpacity style={{ marginTop: 18, alignSelf: 'center' }} onPress={() => setBioModal({ visible: false, bio: '', name: '' })}>
+              <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 16 }}>Fechar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -818,6 +857,20 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#101828', marginBottom: 8, marginTop: 8 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#101828', marginTop: 16, marginBottom: 4 },
   sessionDescription: { fontSize: 14, color: '#3a4a5c', marginBottom: 8 },
+  bioContainer: {
+    height: 100,
+    marginTop: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e3e7ee',
+    borderRadius: 8,
+    padding: 8,
+    backgroundColor: '#f9fafb',
+  },
+  bioText: {
+    fontSize: 14,
+    color: '#3a4a5c',
+  },
   speakerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 8 },
   avatarLarge: { width: 64, height: 64, borderRadius: 32, marginRight: 16, backgroundColor: '#eee' },
   avatarLargePlaceholder: { width: 64, height: 64, borderRadius: 32, marginRight: 16, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' },
