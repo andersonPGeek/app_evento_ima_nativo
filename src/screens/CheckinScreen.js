@@ -43,15 +43,15 @@ export default function CheckinScreen() {
       await checkinApi(data, companyId, token);
       
       setFeedback('success');
-      setMessage('Checkin Realizado');
+      setMessage('Leitura Realizado');
     } catch (err) {
       const apiMessage = err.response?.data?.message;
-      if (apiMessage === 'Usuário já realizou checkin neste estande') {
+      if (apiMessage === 'Usuário já realizou leitura neste estande') {
         setFeedback('warning');
         setMessage(apiMessage);
       } else {
         setFeedback('error');
-        setMessage(apiMessage || 'Falha no Checkin');
+        setMessage(apiMessage || 'Falha na Leitura');
       }
     }
     setLoading(false);
@@ -82,7 +82,7 @@ export default function CheckinScreen() {
           <Ionicons name="checkmark-circle" size={80} color="#22c55e" />
           <Text style={styles.successText}>{message}</Text>
           <TouchableOpacity style={styles.button} onPress={() => { setScanned(false); setFeedback(null); setMessage(''); }}>
-            <Text style={styles.buttonText}>Novo Checkin</Text>
+            <Text style={styles.buttonText}>Nova Leitura</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -100,7 +100,7 @@ export default function CheckinScreen() {
           <Ionicons name="alert-circle" size={80} color="#facc15" />
           <Text style={styles.warningText}>{message}</Text>
           <TouchableOpacity style={styles.button} onPress={() => { setScanned(false); setFeedback(null); setMessage(''); }}>
-            <Text style={styles.buttonText}>Novo Checkin</Text>
+            <Text style={styles.buttonText}>Nova Leitura</Text>
           </TouchableOpacity>
         </View>
       )}

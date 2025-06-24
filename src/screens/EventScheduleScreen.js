@@ -663,21 +663,22 @@ function SessionDetailsModal({ session, user, token, onClose }) {
 
   const renderSpeaker = (speaker, idx) => (
     <View key={speaker.id || idx} style={styles.speakerRow}>
-      <TouchableOpacity
-        onPress={() => {
-          if (speaker.bio) setBioModal({ visible: true, bio: speaker.bio, name: speaker.name });
-        }}
-        activeOpacity={speaker.bio ? 0.7 : 1}
-      >
-        {speaker.avatar ? (
-          <Image source={{ uri: speaker.avatar }} style={styles.avatarLarge} />
-        ) : (
-          <View style={styles.avatarLargePlaceholder}><Ionicons name="person" size={40} color="#888" /></View>
-        )}
-      </TouchableOpacity>
+      {speaker.avatar ? (
+        <Image source={{ uri: speaker.avatar }} style={styles.avatarLarge} />
+      ) : (
+        <View style={styles.avatarLargePlaceholder}><Ionicons name="person" size={40} color="#888" /></View>
+      )}
       <View style={{ flex: 1 }}>
         <Text style={styles.speakerNameLarge}>{speaker.name}</Text>
         <Text style={styles.speakerRole}>{speaker.role}</Text>
+        {speaker.bio ? (
+          <TouchableOpacity
+            style={styles.miniBioButton}
+            onPress={() => setBioModal({ visible: true, bio: speaker.bio, name: speaker.name })}
+          >
+            <Text style={styles.miniBioButtonText}>Mini Bio</Text>
+          </TouchableOpacity>
+        ) : null}
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
           {speaker.social?.linkedin && (
             <TouchableOpacity onPress={() => openSocial(speaker.social.linkedin)}>
@@ -988,5 +989,21 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 8,
     alignSelf: 'center',
+  },
+  miniBioButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#f3f7fd',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 4,
+    marginBottom: 2,
+    borderWidth: 1,
+    borderColor: '#e3e7ee',
+  },
+  miniBioButtonText: {
+    color: '#2563eb',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 }); 
