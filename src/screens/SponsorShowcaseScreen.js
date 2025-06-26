@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, Image, FlatList, ScrollView, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons, AntDesign } from '@expo/vector-icons';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, getCategoriasCache, setCategoriasCache, getSponsorsCache, setSponsorsCache } from '../contexts/AuthContext';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
 import telefoneIcon from '../../assets/telefone.png';
 import websiteIcon from '../../assets/website.png';
@@ -21,6 +21,8 @@ export default function SponsorShowcaseScreen() {
   const [selectedCategoria, setSelectedCategoria] = useState('all');
   const dataFetchedRef = useRef(false);
   const flatListRef = useRef(null);
+  const [categoriasCache, setCategoriasCache] = useState(null);
+  const [sponsorsCache, setSponsorsCache] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,7 +30,7 @@ export default function SponsorShowcaseScreen() {
       dataFetchedRef.current = true;
       setLoading(true);
       try {
-        // Buscar check-ins do usuário
+        // Buscar check-ins do usuário (SEM CACHE - interação do usuário)
         if (userId) {
           const checkinsResponse = await fetch(`${API_BASE}/usuarios-empresas/usuario/${userId}`);
           if (checkinsResponse.ok) {
@@ -40,28 +42,42 @@ export default function SponsorShowcaseScreen() {
             setCheckedInCompanies(checkinsMap);
           }
         }
-        // Buscar categorias
-        const categoriasResponse = await fetch(`${API_BASE}/categorias-patrocinio`);
-        if (!categoriasResponse.ok) throw new Error('Erro ao buscar categorias');
-        const categoriasData = await categoriasResponse.json();
-        const tiposPatrocinio = ['all', ...categoriasData.map(cat => cat.Tipo)];
-        setCategorias(tiposPatrocinio);
-        // Buscar empresas
-        const empresasResponse = await fetch(`${API_BASE}/empresas`);
-        if (!empresasResponse.ok) throw new Error('Erro ao buscar empresas');
-        const empresasData = await empresasResponse.json();
-        const mappedSponsors = empresasData.map(empresa => ({
-          id: empresa.id,
-          name: empresa.nomeEmpresa,
-          tier: empresa.categoriaPatrocinio,
-          logo: empresa.logo,
-          description: empresa.descricao || '',
-          website: empresa.site_web || '',
-          telefone: empresa.telefone || '',
-          contatoComercial: empresa.contato_comercial || '',
-          whatsapp: empresa.site || '',
-        }));
-        setSponsorsList(mappedSponsors);
+        
+        // Buscar categorias (COM CACHE)
+        const cachedCategorias = getCategoriasCache();
+        if (cachedCategorias) {
+          setCategorias(cachedCategorias);
+        } else {
+          const categoriasResponse = await fetch(`${API_BASE}/categorias-patrocinio`);
+          if (!categoriasResponse.ok) throw new Error('Erro ao buscar categorias');
+          const categoriasData = await categoriasResponse.json();
+          const tiposPatrocinio = ['all', ...categoriasData.map(cat => cat.Tipo)];
+          setCategorias(tiposPatrocinio);
+          setCategoriasCache(tiposPatrocinio);
+        }
+        
+        // Buscar empresas (COM CACHE)
+        const cachedSponsors = getSponsorsCache();
+        if (cachedSponsors) {
+          setSponsorsList(cachedSponsors);
+        } else {
+          const empresasResponse = await fetch(`${API_BASE}/empresas`);
+          if (!empresasResponse.ok) throw new Error('Erro ao buscar empresas');
+          const empresasData = await empresasResponse.json();
+          const mappedSponsors = empresasData.map(empresa => ({
+            id: empresa.id,
+            name: empresa.nomeEmpresa,
+            tier: empresa.categoriaPatrocinio,
+            logo: empresa.logo,
+            description: empresa.descricao || '',
+            website: empresa.site_web || '',
+            telefone: empresa.telefone || '',
+            contatoComercial: empresa.contato_comercial || '',
+            whatsapp: empresa.site || '',
+          }));
+          setSponsorsList(mappedSponsors);
+          setSponsorsCache(mappedSponsors);
+        }
       } catch (err) {
         setError(err.message || 'Erro desconhecido');
       } finally {

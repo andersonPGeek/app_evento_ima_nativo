@@ -6,7 +6,7 @@ import { WebView } from 'react-native-webview';
 import { format, addDays, isAfter, isBefore, isEqual, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, getAgendaCache, setAgendaCache } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 
 const API_BASE = 'https://events-br-ima.onrender.com/api';
@@ -51,7 +51,6 @@ export default function EventScheduleScreen({ route }) {
   const [eventEndDate, setEventEndDate] = useState(null);
   const [availableDates, setAvailableDates] = useState([]);
   const [selectedAgendaDate, setSelectedAgendaDate] = useState(null);
-  const [agendaCache, setAgendaCache] = useState({});
   const [selectedSpeakerIndex, setSelectedSpeakerIndex] = useState(0);
   const [bioModal, setBioModal] = useState({ visible: false, bio: '', name: '' });
 
@@ -156,8 +155,9 @@ export default function EventScheduleScreen({ route }) {
   // Função para buscar agenda com cache
   const fetchAgenda = useCallback(async (eventId, palcoId, trilhaId) => {
     const cacheKey = `${eventId}-${palcoId}-${trilhaId}`;
-    if (agendaCache[cacheKey]) {
-      setSessions(agendaCache[cacheKey]);
+    const currentAgendaCache = getAgendaCache();
+    if (currentAgendaCache[cacheKey]) {
+      setSessions(currentAgendaCache[cacheKey]);
       return;
     }
     setIsLoadingLectures(true);
@@ -166,7 +166,8 @@ export default function EventScheduleScreen({ route }) {
       const response = await fetch(url);
       if (response.status === 404) {
         setSessions([]);
-        setAgendaCache(prev => ({ ...prev, [cacheKey]: [] }));
+        const updatedCache = { ...currentAgendaCache, [cacheKey]: [] };
+        setAgendaCache(updatedCache);
         return;
       }
       if (!response.ok) throw new Error(`Erro ao buscar detalhes das palestras: ${response.status}`);
@@ -221,13 +222,14 @@ export default function EventScheduleScreen({ route }) {
         };
       }) || [];
       setSessions(formattedSessions);
-      setAgendaCache(prev => ({ ...prev, [cacheKey]: formattedSessions }));
+      const updatedCache = { ...currentAgendaCache, [cacheKey]: formattedSessions };
+      setAgendaCache(updatedCache);
     } catch (err) {
       setError(err.message || 'Erro desconhecido');
     } finally {
       setIsLoadingLectures(false);
     }
-  }, [agendaCache]);
+  }, []);
 
   // useEffect para buscar agenda usando cache
   useEffect(() => {
@@ -586,7 +588,13 @@ function SessionDetailsModal({ session, user, token, onClose }) {
     setError('');
     setSuccess('');
     try {
-      const res = await fetch(`${API_BASE}/nota-palestras/${session.lectureId}/${user.id}`);
+      // API de avaliações SEM CACHE - é uma interação do usuário
+      const res = await fetch(`${API_BASE}/nota-palestras/${session.lectureId}/${user.id}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         setRating(data.nota_palestra);
@@ -631,11 +639,14 @@ function SessionDetailsModal({ session, user, token, onClose }) {
         motivo: motivoText || undefined
       };
       const method = hasExistingRating ? 'PUT' : 'POST';
+      // API de avaliações SEM CACHE - é uma interação do usuário
       const res = await fetch(`${API_BASE}/nota-palestras`, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify(payload)
       });

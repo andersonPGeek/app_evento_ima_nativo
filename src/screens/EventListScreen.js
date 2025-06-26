@@ -3,6 +3,7 @@ import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Image, Style
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth, getEventsCache, setEventsCache, getPalestrantesCache, setPalestrantesCache } from '../contexts/AuthContext';
 
 const API_URL = 'https://events-br-ima.onrender.com/api/eventos';
 const PALESTRANTES_URL = 'https://events-br-ima.onrender.com/api/eventos/palestrante';
@@ -30,6 +31,7 @@ export default function EventListScreen() {
 
   const searchInputRef = useRef(null);
   const navigation = useNavigation();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchEvents();
@@ -41,6 +43,14 @@ export default function EventListScreen() {
   }, [palestrantes]);
 
   const fetchEvents = async () => {
+    const cachedEvents = getEventsCache();
+    if (cachedEvents) {
+      setEvents(cachedEvents);
+      setFilteredEvents(cachedEvents);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
@@ -50,6 +60,7 @@ export default function EventListScreen() {
       const eventos = (data.eventos || []).filter(e => String(e.id) !== '20');
       setEvents(eventos);
       setFilteredEvents(eventos);
+      setEventsCache(eventos);
     } catch (err) {
       setError('Erro ao buscar eventos');
     } finally {
@@ -58,6 +69,12 @@ export default function EventListScreen() {
   };
 
   const fetchPalestrantes = async () => {
+    const cachedPalestrantes = getPalestrantesCache();
+    if (cachedPalestrantes) {
+      setPalestrantes(cachedPalestrantes);
+      return;
+    }
+
     try {
       const response = await fetch(PALESTRANTES_URL);
       if (!response.ok) throw new Error('Erro ao buscar palestrantes');
@@ -84,6 +101,7 @@ export default function EventListScreen() {
       }
 
       setPalestrantes(uniquePalestrantes);
+      setPalestrantesCache(uniquePalestrantes);
     } catch (err) {
       console.error('Erro ao buscar palestrantes:', err);
     }

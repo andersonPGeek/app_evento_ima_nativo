@@ -9,6 +9,34 @@ const API_BASE = 'https://events-br-ima.onrender.com/api';
 
 const AuthContext = createContext();
 
+// Variáveis globais para cache que serão limpas no logout
+let globalEventsCache = null;
+let globalPalestrantesCache = null;
+let globalCategoriasCache = null;
+let globalSponsorsCache = null;
+let globalAgendaCache = {};
+
+// Função para limpar todos os caches
+export const clearAllCaches = () => {
+  globalEventsCache = null;
+  globalPalestrantesCache = null;
+  globalCategoriasCache = null;
+  globalSponsorsCache = null;
+  globalAgendaCache = {};
+};
+
+// Funções para acessar e modificar os caches globais
+export const getEventsCache = () => globalEventsCache;
+export const setEventsCache = (cache) => { globalEventsCache = cache; };
+export const getPalestrantesCache = () => globalPalestrantesCache;
+export const setPalestrantesCache = (cache) => { globalPalestrantesCache = cache; };
+export const getCategoriasCache = () => globalCategoriasCache;
+export const setCategoriasCache = (cache) => { globalCategoriasCache = cache; };
+export const getSponsorsCache = () => globalSponsorsCache;
+export const setSponsorsCache = (cache) => { globalSponsorsCache = cache; };
+export const getAgendaCache = () => globalAgendaCache;
+export const setAgendaCache = (cache) => { globalAgendaCache = cache; };
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -152,6 +180,8 @@ export const AuthProvider = ({ children }) => {
       setRole(null);
       setTicket(null);
       setError(null);
+      // Limpar todos os caches ao fazer logout
+      clearAllCaches();
       await AsyncStorage.clear();
     } catch (e) {
       console.error('Erro ao fazer logout:', e);
