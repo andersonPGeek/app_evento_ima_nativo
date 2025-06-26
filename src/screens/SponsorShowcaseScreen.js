@@ -20,6 +20,7 @@ export default function SponsorShowcaseScreen() {
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [selectedCategoria, setSelectedCategoria] = useState('all');
   const dataFetchedRef = useRef(false);
+  const flatListRef = useRef(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -139,7 +140,12 @@ export default function SponsorShowcaseScreen() {
             <TouchableOpacity
               key={categoria}
               style={[styles.categoriaTab, selectedCategoria === categoria && styles.categoriaTabActive]}
-              onPress={() => setSelectedCategoria(categoria)}
+              onPress={() => {
+                setSelectedCategoria(categoria);
+                if (flatListRef.current) {
+                  flatListRef.current.scrollToOffset({ offset: 0, animated: true });
+                }
+              }}
             >
               <Text style={[styles.categoriaTabText, selectedCategoria === categoria && styles.categoriaTabTextActive]}>{categoria}</Text>
             </TouchableOpacity>
@@ -148,6 +154,7 @@ export default function SponsorShowcaseScreen() {
       </View>
       {/* Listagem de expositores */}
       <FlatList
+        ref={flatListRef}
         data={filteredSponsors}
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 350, paddingTop: 16 }}

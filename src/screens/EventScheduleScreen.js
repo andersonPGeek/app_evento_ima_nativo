@@ -304,7 +304,11 @@ export default function EventScheduleScreen({ route }) {
                 )}
                 {session.type !== 'Palestra' ? (
                   <Image
-                    source={require('../../assets/almoco.png')}
+                    source={
+                      session.type === 'Coquetel' ? require('../../assets/coquetel.png') :
+                      session.type === 'Sorteio de brindes' ? require('../../assets/sorteio.png') :
+                      require('../../assets/almoco.png')
+                    }
                     style={styles.specialImage}
                     resizeMode="cover"
                   />
