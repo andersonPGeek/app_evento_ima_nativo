@@ -26,7 +26,7 @@
         "CAMERA",
         "android.permission.CAMERA"
       ],
-      "package": "com.andersonpsilva.app_evento_ima_nativo",
+      "package": "com.lyfiti.app_evento_ima_nativo",
       "enableProguardInReleaseBuilds": true,
       "enableShrinkResources": true,
       "enableR8": true
@@ -34,8 +34,10 @@
     "ios": {
       "infoPlist": {
         "NSCameraUsageDescription": "Permita o acesso à câmera para escanear QR Codes.",
-        "NSMicrophoneUsageDescription": "Permita o acesso ao microfone para gravação de vídeo."
-      }
+        "NSMicrophoneUsageDescription": "Permita o acesso ao microfone para gravação de vídeo.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.lyfiti.iimaeventos"
     },
     "extra": {
       "eas": {

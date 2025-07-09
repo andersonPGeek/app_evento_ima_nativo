@@ -139,6 +139,12 @@ export const AuthProvider = ({ children }) => {
       setRole(user.Role);
       setTicket(user.Ticket);
       
+      console.log('Token', token)
+      console.log('Role', user.Role)
+      console.log('Ticket', user.Ticket)
+      console.log('userId', user.id)
+      console.log('userEmail', email)
+
       await Promise.all([
         AsyncStorage.setItem('token', token),
         AsyncStorage.setItem('role', user.Role),
@@ -148,6 +154,7 @@ export const AuthProvider = ({ children }) => {
       ]);
 
       setLoading(false);
+      console.log('Cheguei no login', user)
       return { success: true, user: { ...user, email } };
 
     } catch (error) {
@@ -166,6 +173,7 @@ export const AuthProvider = ({ children }) => {
 
       // Se não é primeiro acesso ou já tentou sincronizar
       setLoading(false);
+      console.log('Cheguei no erro', error)
       return { 
         success: false, 
         error: 'Usuário ou senha inválidos' 
