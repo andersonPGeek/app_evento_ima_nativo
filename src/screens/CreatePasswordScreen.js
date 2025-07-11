@@ -10,7 +10,7 @@ export default function CreatePasswordScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const { login } = useAuth();
+  const { login, setShowBanner } = useAuth();
 
   const handleCreatePassword = async () => {
     setError('');
@@ -34,7 +34,12 @@ export default function CreatePasswordScreen({ route, navigation }) {
       setTimeout(async () => {
         const result = await login(email, password);
         if (result.success && result.user) {
-          navigation.replace('Main');
+          // Mostrar banner ANTES da navegação
+          setShowBanner(true);
+          // Navegar após um pequeno delay
+          setTimeout(() => {
+            navigation.replace('Main');
+          }, 100);
         } else {
           navigation.navigate('Login', { email });
         }

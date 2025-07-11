@@ -29,4 +29,16 @@ export const checkinApi = async (codigoQr, companyId, token) => {
 
 export const verificarCodigoApi = async (codigo) => {
   return axios.get(`${API_BASE}/auth/verificar-codigo/${codigo}`);
+};
+
+export const getCurrentBannerApi = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/banner/current`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return response;
+  } catch (error) {
+    console.error('🌐 [API] Erro na API do banner:', error);
+    throw error;
+  }
 }; 

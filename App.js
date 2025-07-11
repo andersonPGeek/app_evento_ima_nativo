@@ -7,6 +7,7 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
 import SyncSymplaScreen from './src/screens/SyncSymplaScreen';
 import BottomTabs from './src/navigation/BottomTabs';
+import BannerModal from './src/components/BannerModal';
 import { ActivityIndicator, View, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -14,7 +15,7 @@ import Toast from 'react-native-toast-message';
 const Stack = createStackNavigator();
 
 function RootNavigator() {
-  const { user, role, initializing } = useAuth();
+  const { user, role, initializing, showBanner, setShowBanner } = useAuth();
 
   if (initializing) {
     return (
@@ -26,23 +27,30 @@ function RootNavigator() {
   }
 
   return (
-    <Stack.Navigator 
-      screenOptions={{ 
-        headerShown: false,
-        cardStyle: { backgroundColor: '#fff' }
-      }}
-    >
-      {!user ? (
-        <>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-          <Stack.Screen name="CreatePassword" component={CreatePasswordScreen} />
-          <Stack.Screen name="SyncSympla" component={SyncSymplaScreen} />
-        </>
-      ) : (
-        <Stack.Screen name="Main" component={BottomTabs} />
-      )}
-    </Stack.Navigator>
+    <>
+      <Stack.Navigator 
+        screenOptions={{ 
+          headerShown: false,
+          cardStyle: { backgroundColor: '#fff' }
+        }}
+      >
+        {!user ? (
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen name="CreatePassword" component={CreatePasswordScreen} />
+            <Stack.Screen name="SyncSympla" component={SyncSymplaScreen} />
+          </>
+        ) : (
+          <Stack.Screen name="Main" component={BottomTabs} />
+        )}
+      </Stack.Navigator>
+      
+      <BannerModal 
+        visible={showBanner} 
+        onClose={() => setShowBanner(false)} 
+      />
+    </>
   );
 }
 

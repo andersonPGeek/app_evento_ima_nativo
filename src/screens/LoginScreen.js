@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityInd
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen({ navigation, route }) {
-  const { login, loading } = useAuth();
+  const { login, loading, setShowBanner } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,9 +18,6 @@ export default function LoginScreen({ navigation, route }) {
     setError('');
     if (email && senha && email === senha) {
       const result = await login(email, senha);
-      console.log('Resultado do login:', result);
-      console.log('Resultado do Sucesso:', result.success);
-      console.log('Resultado do Error:', result.error);
       if (result.success && result.mustChangePassword && result.user && result.token) {
         navigation.replace('CreatePassword', { userId: result.user.id, email, token: result.token });
         return;
@@ -48,9 +45,18 @@ export default function LoginScreen({ navigation, route }) {
 
     // Redirecionamento por role
     if (result.user?.Role === 'estande' || result.user?.Role === 'estandeAdmin') {
-      navigation.replace('Main');
+      setShowBanner(true);
+      // Navegar após um pequeno delay
+      setTimeout(() => {
+        navigation.replace('Main');
+      }, 100);
     } else if (result.user?.Role === 'user') {
-      navigation.replace('Main', { screen: 'Eventos' });
+      setShowBanner(true);
+      // Navegar após um pequeno delay
+      setTimeout(() => {
+        navigation.replace('Main', { screen: 'Eventos' });
+      }, 100);
+    } else {
     }
   };
 

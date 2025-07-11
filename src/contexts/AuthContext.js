@@ -46,6 +46,7 @@ export const AuthProvider = ({ children }) => {
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
   const [syncedEmails, setSyncedEmails] = useState(new Set());
+  const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
     const loadStorage = async () => {
@@ -68,6 +69,9 @@ export const AuthProvider = ({ children }) => {
             email: storedEmail,
             ticket: storedTicket
           });
+          
+          // Não mostrar banner automaticamente quando usuário já está logado
+          // O banner só deve aparecer após login bem-sucedido
         } else {
           await AsyncStorage.clear();
         }
@@ -138,23 +142,17 @@ export const AuthProvider = ({ children }) => {
       setToken(token);
       setRole(user.Role);
       setTicket(user.Ticket);
-      
-      console.log('Token', token)
-      console.log('Role', user.Role)
-      console.log('Ticket', user.Ticket)
-      console.log('userId', user.id)
-      console.log('userEmail', email)
 
       await Promise.all([
         AsyncStorage.setItem('token', token),
         AsyncStorage.setItem('role', user.Role),
         AsyncStorage.setItem('userId', user.id),
         AsyncStorage.setItem('userEmail', email),
-        AsyncStorage.setItem('ticket', user.Ticket)
+        AsyncStorage.setItem('ticket', user.Ticket || '')
       ]);
 
+      // Banner será ativado pelo LoginScreen após navegação
       setLoading(false);
-      console.log('Cheguei no login', user)
       return { success: true, user: { ...user, email } };
 
     } catch (error) {
@@ -173,7 +171,6 @@ export const AuthProvider = ({ children }) => {
 
       // Se não é primeiro acesso ou já tentou sincronizar
       setLoading(false);
-      console.log('Cheguei no erro', error)
       return { 
         success: false, 
         error: 'Usuário ou senha inválidos' 
@@ -188,6 +185,7 @@ export const AuthProvider = ({ children }) => {
       setRole(null);
       setTicket(null);
       setError(null);
+      setShowBanner(false);
       // Limpar todos os caches ao fazer logout
       clearAllCaches();
       await AsyncStorage.clear();
@@ -207,7 +205,9 @@ export const AuthProvider = ({ children }) => {
       initializing, 
       error,
       login, 
-      logout 
+      logout,
+      showBanner,
+      setShowBanner
     }}>
       {children}
     </AuthContext.Provider>
