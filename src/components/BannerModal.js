@@ -17,41 +17,68 @@ const { width, height } = Dimensions.get('window');
 export default function BannerModal({ visible, onClose }) {
   const [banner, setBanner] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [shouldShowModal, setShouldShowModal] = useState(false);
+
+  console.log('🎨 [BANNER] BannerModal renderizado, visible:', visible);
 
   useEffect(() => {
+    console.log('🎨 [BANNER] useEffect triggered, visible:', visible);
     if (visible) {
+      console.log('🎨 [BANNER] Banner visível, buscando dados...');
       fetchBanner();
+    } else {
+      // Resetar estados quando modal não está visível
+      setBanner(null);
+      setShouldShowModal(false);
+      setLoading(true);
     }
   }, [visible]);
 
   const fetchBanner = async () => {
+    console.log('🎨 [BANNER] Iniciando busca do banner...');
     try {
       setLoading(true);
-      setError('');
       const response = await getCurrentBannerApi();
+      console.log('🎨 [BANNER] Resposta da API:', response.data);
       
       if (response.data.success && response.data.banner) {
+        console.log('🎨 [BANNER] Banner encontrado:', response.data.banner);
         setBanner(response.data.banner);
+        setShouldShowModal(true); // Só mostra a modal se há banner válido
       } else {
-        setError('Nenhum banner disponível no momento');
+        console.log('🎨 [BANNER] Nenhum banner disponível');
+        // Não exibir modal quando não há banner
+        onClose();
       }
     } catch (err) {
-      setError('Erro ao carregar banner');
+      // Tratar erro de forma silenciosa se for um erro esperado
+      if (err.message === 'BANNER_NOT_FOUND' || err.isExpected) {
+        console.log('🎨 [BANNER] Banner não encontrado - comportamento esperado');
+      } else {
+        console.error('🎨 [BANNER] Erro ao buscar banner:', err);
+      }
+      // Não exibir modal quando há erro na API
+      onClose();
     } finally {
+      console.log('🎨 [BANNER] Loading finalizado');
       setLoading(false);
     }
   };
 
   const handleClose = () => {
+    console.log('🎨 [BANNER] Banner fechado pelo usuário');
     setBanner(null);
-    setError('');
+    setShouldShowModal(false);
     onClose();
   };
 
-  if (!visible) {
+  // Só renderiza a modal se visible=true E shouldShowModal=true
+  if (!visible || !shouldShowModal) {
+    console.log('🎨 [BANNER] Modal não deve ser exibida - visible:', visible, 'shouldShowModal:', shouldShowModal);
     return null;
   }
+
+  console.log('🎨 [BANNER] Renderizando modal, loading:', loading, 'banner:', !!banner);
 
   return (
     <Modal
@@ -74,11 +101,6 @@ export default function BannerModal({ visible, onClose }) {
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#101828" />
                 <Text style={styles.loadingText}>Carregando banner...</Text>
-              </View>
-            ) : error ? (
-              <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={48} color="#ef4444" />
-                <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : banner ? (
               <View style={styles.bannerContainer}>
@@ -144,16 +166,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#666',
-  },
-  errorContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  errorText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
   },
   bannerContainer: {
     alignItems: 'center',

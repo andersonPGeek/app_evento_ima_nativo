@@ -14,6 +14,18 @@ import Toast from 'react-native-toast-message';
 
 const Stack = createStackNavigator();
 
+// Tratamento global de erros
+const handleGlobalError = (error, isFatal) => {
+  // Ignorar erros esperados do banner
+  if (error.message === 'BANNER_NOT_FOUND' || error.isExpected) {
+    console.log('🔧 [GLOBAL] Erro esperado ignorado:', error.message);
+    return;
+  }
+  
+  // Para outros erros, logar mas não quebrar o app
+  console.error('🔧 [GLOBAL] Erro capturado:', error);
+};
+
 function RootNavigator() {
   const { user, role, initializing, showBanner, setShowBanner } = useAuth();
 
@@ -55,6 +67,20 @@ function RootNavigator() {
 }
 
 export default function App() {
+  // Configurar tratamento global de erros
+  React.useEffect(() => {
+    if (__DEV__) {
+      const originalConsoleError = console.error;
+      console.error = (...args) => {
+        // Filtrar erros esperados do banner
+        if (args[0] && typeof args[0] === 'string' && args[0].includes('BANNER_NOT_FOUND')) {
+          return;
+        }
+        originalConsoleError.apply(console, args);
+      };
+    }
+  }, []);
+
   return (
     <SafeAreaProvider>
       <AuthProvider>
@@ -63,6 +89,10 @@ export default function App() {
         >
           <RootNavigator />
         </NavigationContainer>
+        <BannerModal 
+          visible={false} 
+          onClose={() => {}} 
+        />
       </AuthProvider>
       <Toast />
     </SafeAreaProvider>
