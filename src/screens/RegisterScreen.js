@@ -149,7 +149,7 @@ export default function RegisterScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f3f7fd' }} edges={['top']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={styles.container}>
-          <Text style={styles.header}>Cadastro de Usuário</Text>
+          <Text style={styles.header}>Inscreva sua Equipe</Text>
           {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View> : null}
           {success ? <View style={styles.successBox}><Text style={styles.successText}>{success}</Text></View> : null}
           <View style={styles.formGroup}>
@@ -169,7 +169,7 @@ export default function RegisterScreen() {
             <TextInput style={styles.input} value={formData.email} onChangeText={v => handleChange('email', v)} placeholder="Email" keyboardType="email-address" autoCapitalize="none" placeholderTextColor="#888" />
           </View>
           <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Cadastrar</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Inscrever</Text>}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

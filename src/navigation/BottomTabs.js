@@ -10,7 +10,7 @@ import SponsorShowcaseScreen from '../screens/SponsorShowcaseScreen';
 import CheckinListScreen from '../screens/CheckinListScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import TicketScreen from '../screens/TicketScreen';
-import { View, Text } from 'react-native';
+import { View, Text, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
@@ -18,6 +18,19 @@ const Tab = createBottomTabNavigator();
 export default function BottomTabs() {
   const { role, logout } = useAuth();
   const insets = useSafeAreaInsets();
+
+  // Função para exibir a modal de confirmação de logout
+  const handleLogoutPress = () => {
+    Alert.alert(
+      'Sair do Aplicativo',
+      'Tem certeza que deseja sair do aplicativo?',
+      [
+        { text: 'Não', style: 'cancel' },
+        { text: 'Sim', style: 'destructive', onPress: logout },
+      ],
+      { cancelable: false }
+    );
+  };
 
   // Fallback para role indefinido
   if (!role) {
@@ -65,7 +78,7 @@ export default function BottomTabs() {
               return <Ionicons name="qr-code" size={size} color={color} />;
             case 'Listagem':
               return <Ionicons name="list" size={size} color={color} />;
-            case 'Cadastrar':
+            case 'Inscrever':
               return <Ionicons name="person-add" size={size} color={color} />;
             case 'Ticket':
               return <Ionicons name="ticket" size={size} color={color} />;
@@ -84,7 +97,18 @@ export default function BottomTabs() {
           <Tab.Screen name="Agenda" component={EventScheduleScreen} />
           <Tab.Screen name="Estandes" component={SponsorShowcaseScreen} />
           <Tab.Screen name="Ticket" component={TicketScreen} />
-          <Tab.Screen name="Sair" component={() => <LogoutTab logout={logout} />} />
+          <Tab.Screen 
+            name="Sair" 
+            component={View}
+            options={{
+              tabBarButton: (props) => (
+                <View {...props} onTouchEnd={handleLogoutPress}>
+                  <Ionicons name="log-out-outline" size={24} color="#888" />
+                  <Text style={{ fontSize: 12, color: '#888', textAlign: 'center' }}>Sair</Text>
+                </View>
+              ),
+            }}
+          />
         </>
       )}
       {/* Role: estande ou estandeAdmin */}
@@ -93,18 +117,26 @@ export default function BottomTabs() {
           <Tab.Screen name="Leitura" component={CheckinScreen} />
           <Tab.Screen name="Listagem" component={CheckinListScreen} />
           {role === 'estandeAdmin' && (
-            <Tab.Screen name="Cadastrar" component={RegisterScreen} />
+            <Tab.Screen name="Inscrever" component={RegisterScreen} />
           )}
-          <Tab.Screen name="Sair" component={() => <LogoutTab logout={logout} />} />
+          <Tab.Screen name="Eventos" component={EventListScreen} />
+          <Tab.Screen name="Agenda" component={EventScheduleScreen} />
+          <Tab.Screen name="Estandes" component={SponsorShowcaseScreen} />
+          <Tab.Screen name="Ticket" component={TicketScreen} />
+          <Tab.Screen 
+            name="Sair" 
+            component={View}
+            options={{
+              tabBarButton: (props) => (
+                <View {...props} onTouchEnd={handleLogoutPress}>
+                  <Ionicons name="log-out-outline" size={24} color="#888" />
+                  <Text style={{ fontSize: 12, color: '#888', textAlign: 'center' }}>Sair</Text>
+                </View>
+              ),
+            }}
+          />
         </>
       )}
     </Tab.Navigator>
   );
-}
-
-function LogoutTab({ logout }) {
-  React.useEffect(() => {
-    logout();
-  }, [logout]);
-  return <View />;
 } 
