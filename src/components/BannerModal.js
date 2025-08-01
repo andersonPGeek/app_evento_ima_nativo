@@ -19,12 +19,8 @@ export default function BannerModal({ visible, onClose }) {
   const [loading, setLoading] = useState(true);
   const [shouldShowModal, setShouldShowModal] = useState(false);
 
-  console.log('🎨 [BANNER] BannerModal renderizado, visible:', visible);
-
   useEffect(() => {
-    console.log('🎨 [BANNER] useEffect triggered, visible:', visible);
     if (visible) {
-      console.log('🎨 [BANNER] Banner visível, buscando dados...');
       fetchBanner();
     } else {
       // Resetar estados quando modal não está visível
@@ -35,18 +31,14 @@ export default function BannerModal({ visible, onClose }) {
   }, [visible]);
 
   const fetchBanner = async () => {
-    console.log('🎨 [BANNER] Iniciando busca do banner...');
     try {
       setLoading(true);
       const response = await getCurrentBannerApi();
-      console.log('🎨 [BANNER] Resposta da API:', response.data);
       
       if (response.data.success && response.data.banner) {
-        console.log('🎨 [BANNER] Banner encontrado:', response.data.banner);
         setBanner(response.data.banner);
         setShouldShowModal(true); // Só mostra a modal se há banner válido
       } else {
-        console.log('🎨 [BANNER] Nenhum banner disponível');
         // Não exibir modal quando não há banner
         onClose();
       }
@@ -74,11 +66,8 @@ export default function BannerModal({ visible, onClose }) {
 
   // Só renderiza a modal se visible=true E shouldShowModal=true
   if (!visible || !shouldShowModal) {
-    console.log('🎨 [BANNER] Modal não deve ser exibida - visible:', visible, 'shouldShowModal:', shouldShowModal);
     return null;
   }
-
-  console.log('🎨 [BANNER] Renderizando modal, loading:', loading, 'banner:', !!banner);
 
   return (
     <Modal

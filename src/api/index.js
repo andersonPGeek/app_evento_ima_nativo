@@ -32,23 +32,19 @@ export const verificarCodigoApi = async (codigo) => {
 };
 
 export const getCurrentBannerApi = async () => {
-  console.log('🌐 [API] Buscando banner atual...');
   try {
     const response = await axios.get(`${API_BASE}/banner/current`, {
       headers: { 'Content-Type': 'application/json' },
     });
-    console.log('🌐 [API] Banner API response:', response.data);
     return response;
   } catch (error) {
     // Para 404, não é um erro real, é comportamento esperado
     if (error.response?.status === 404) {
-      console.log('🌐 [API] Banner não encontrado (404) - comportamento esperado');
       // Retornar um erro customizado que não será tratado como erro de JavaScript
       const customError = new Error('BANNER_NOT_FOUND');
       customError.isExpected = true; // Marcar como erro esperado
       throw customError;
     } else {
-      console.error('🌐 [API] Erro na API do banner:', error);
       throw error;
     }
   }

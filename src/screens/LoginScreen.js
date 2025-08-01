@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Linking } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen({ navigation, route }) {
@@ -96,6 +96,17 @@ export default function LoginScreen({ navigation, route }) {
           <Text style={styles.link}>Esqueceu sua senha?</Text>
         </TouchableOpacity>
       </View>
+      <TouchableOpacity
+        style={styles.helpButton}
+        onPress={() => Linking.openURL('https://chatgpt.com/g/g-68715dfbd0e08191a6a9f22baf2b3a0b-atendente-app-iima-eventos')}
+        activeOpacity={0.8}
+      >
+        <Image
+          source={require('../../assets/atendente.png')}
+          style={styles.helpImage}
+        />
+        <Text style={styles.helpText}>Posso te ajudar?</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -191,5 +202,27 @@ const styles = StyleSheet.create({
     color: 'red',
     marginBottom: 8,
     textAlign: 'center',
+  },
+  helpButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    backgroundColor: '#101828', // preto do app
+    borderRadius: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    elevation: 2,
+  },
+  helpImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  helpText: {
+    fontSize: 16,
+    color: '#fff', // branco
+    fontWeight: 'bold',
   },
 }); 

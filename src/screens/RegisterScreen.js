@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { getEmpresaByUserApi } from '../api';
@@ -63,6 +63,59 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [funcionarios, setFuncionarios] = useState([]);
+  const [loadingFuncionarios, setLoadingFuncionarios] = useState(false);
+
+  // Buscar funcionários ao carregar tela
+  useEffect(() => {
+    fetchFuncionarios();
+  }, []);
+
+  const fetchFuncionarios = async () => {
+    setLoadingFuncionarios(true);
+    try {
+      // Buscar companyId do estande logado
+      const empresaRes = await getEmpresaByUserApi(user.id, token);
+      const companyId = empresaRes?.data?.data?.ID_empresa;
+      if (!companyId) throw new Error('ID da empresa não encontrado');
+      // Buscar funcionários
+      const res = await fetch(`${API_BASE}/usuarios/empresa/${companyId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setFuncionarios(data.usuarios || []);
+    } catch (err) {
+      setFuncionarios([]);
+    } finally {
+      setLoadingFuncionarios(false);
+    }
+  };
+
+  const handleDeleteFuncionario = (id, nome) => {
+    Alert.alert(
+      'Excluir Integrante',
+      `Tem certeza que deseja excluir ${nome}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir', style: 'destructive',
+          onPress: () => deleteFuncionario(id)
+        }
+      ]
+    );
+  };
+
+  const deleteFuncionario = async (id) => {
+    try {
+      await fetch(`${API_BASE}/usuarios/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchFuncionarios();
+    } catch (err) {
+      Alert.alert('Erro', 'Não foi possível excluir o funcionário.');
+    }
+  };
 
   const handleChange = (name, value) => {
     if (name === 'CPF') {
@@ -138,6 +191,7 @@ export default function RegisterScreen() {
       }
       setSuccess('Usuário cadastrado e vinculado com sucesso!');
       setFormData({ Nome: '', CPF: '', Telefone: '', email: '' });
+      fetchFuncionarios(); // Atualizar lista após cadastro
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao processar o cadastro');
     } finally {
@@ -147,7 +201,7 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f3f7fd' }} edges={['top']}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={styles.container}>
           <Text style={styles.header}>Inscreva sua Equipe</Text>
           {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View> : null}
@@ -162,7 +216,7 @@ export default function RegisterScreen() {
           </View>
           <View style={styles.formGroup}>
             <Text style={styles.label}>Telefone</Text>
-            <TextInput style={styles.input} value={formData.Telefone} onChangeText={v => handleChange('Telefone', v)} placeholder="Telefone" keyboardType="phone-pad" placeholderTextColor="#888" />
+            <TextInput style={styles.input} value={formData.Telefone} onChangeText={v => handleChange('Telefone', v)} placeholder="Telefone" keyboardType="numeric" returnKeyType="done" placeholderTextColor="#888" />
           </View>
           <View style={styles.formGroup}>
             <Text style={styles.label}>Email</Text>
@@ -171,6 +225,33 @@ export default function RegisterScreen() {
           <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Inscrever</Text>}
           </TouchableOpacity>
+
+          {/* Listagem de funcionários */}
+          <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 32, marginBottom: 8, color: '#101828' }}>Integrantes já inscritos</Text>
+          {loadingFuncionarios ? (
+            <ActivityIndicator color="#101828" style={{ marginVertical: 16 }} />
+          ) : (
+            <FlatList
+              data={funcionarios}
+              keyExtractor={item => item.id}
+              ListEmptyComponent={<Text style={{ color: '#888', textAlign: 'center', marginTop: 16 }}>Nenhum funcionário cadastrado.</Text>}
+              renderItem={({ item }) => (
+                <View style={styles.funcionarioRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.funcionarioNome}>{item.Nome}</Text>
+                    <Text style={styles.funcionarioEmail}>{item.Email}</Text>
+                    <Text style={styles.funcionarioRole}>{item.Role}</Text>
+                  </View>
+                  {item.Role !== 'Administrador' && (
+                    <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteFuncionario(item.id, item.Nome)}>
+                      <Text style={styles.deleteButtonText}>Excluir</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+              style={{ marginTop: 8 }}
+            />
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -189,4 +270,25 @@ const styles = StyleSheet.create({
   errorText: { color: '#b91c1c', fontWeight: 'bold', textAlign: 'center' },
   successBox: { backgroundColor: '#d1fae5', borderColor: '#34d399', borderWidth: 1, borderRadius: 8, marginBottom: 12, padding: 10 },
   successText: { color: '#166534', fontWeight: 'bold', textAlign: 'center' },
+  funcionarioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e3e7ee',
+  },
+  funcionarioNome: { fontWeight: 'bold', color: '#101828', fontSize: 15 },
+  funcionarioEmail: { color: '#2563eb', fontSize: 14 },
+  funcionarioRole: { color: '#888', fontSize: 13 },
+  deleteButton: {
+    backgroundColor: '#b91c1c',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginLeft: 12,
+  },
+  deleteButtonText: { color: '#fff', fontWeight: 'bold' },
 }); 
