@@ -4,7 +4,7 @@ import { criarSenhaApi } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function CreatePasswordScreen({ route, navigation }) {
-  const { userId, email, token } = route.params;
+  const { email, userId } = route.params;
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,16 +29,17 @@ export default function CreatePasswordScreen({ route, navigation }) {
     }
     setLoading(true);
     try {
+      // Criar a senha com o userId recebido nos parâmetros
       const res = await criarSenhaApi(userId, password);
       setSuccess(res.data?.message || 'Senha criada com sucesso!');
+      
       setTimeout(async () => {
+        // Fazer login para entrar no app
         const result = await login(email, password);
         if (result.success && result.user) {
-          // Mostrar banner ANTES da navegação
           setShowBanner(true);
-          // Navegar após um pequeno delay
           setTimeout(() => {
-          navigation.replace('Main');
+            navigation.replace('Main');
           }, 100);
         } else {
           navigation.navigate('Login', { email });

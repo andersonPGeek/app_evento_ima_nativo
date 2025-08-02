@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Linking } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { verificarEmailApi } from '../api';
 
 export default function LoginScreen({ navigation, route }) {
   const { login, loading, setShowBanner } = useAuth();
@@ -8,29 +9,64 @@ export default function LoginScreen({ navigation, route }) {
   const [senha, setSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [showPasswordField, setShowPasswordField] = useState(false);
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
 
   useEffect(() => {
     if (route?.params?.email) setEmail(route.params.email);
     if (route?.params?.senha) setSenha(route.params.senha);
   }, [route?.params]);
 
+  const verifyEmail = async (email) => {
+    try {
+      setVerifyingEmail(true);
+      setError('');
+      
+      const response = await verificarEmailApi(email);
+      const data = response.data;
+      
+      if (data.success) {
+        if (!data.existeNaBase) {
+          // Usuário não existe na base - ir para SyncSympla
+          navigation.navigate('SyncSympla', { email });
+        } else if (data.primeiroLogin) {
+          // Usuário existe mas é primeiro login - ir para CreatePassword
+          navigation.replace('CreatePassword', { email, userId: data.userId });
+        } else {
+          // Usuário existe e não é primeiro login - mostrar campo senha
+          setShowPasswordField(true);
+        }
+      } else {
+        setError('Erro ao verificar e-mail. Tente novamente.');
+      }
+    } catch (err) {
+      setError('Erro de conexão. Verifique sua internet.');
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
+
+  const handleNextOrLogin = async () => {
+    if (!email.trim()) {
+      setError('Digite um e-mail válido');
+      return;
+    }
+
+    if (!showPasswordField) {
+      // Primeira etapa - verificar e-mail
+      await verifyEmail(email.trim());
+    } else {
+      // Segunda etapa - fazer login com senha
+      await handleLogin();
+    }
+  };
+
   const handleLogin = async () => {
     setError('');
-    if (email && senha && email === senha) {
-      const result = await login(email, senha);
-      if (result.success && result.mustChangePassword && result.user && result.token) {
-        navigation.replace('CreatePassword', { userId: result.user.id, email, token: result.token });
-        return;
-      } else if (result.success && result.user) {
-        navigation.replace('CreatePassword', { userId: result.user.id, email });
-        return;
-      } else if (result.error === 'sync_required') {
-        navigation.navigate('SyncSympla', { email });
-        return;
-      } else {
-        setError(result.error || 'Erro ao autenticar para criar senha.');
-        return;
-      }
+    
+    if (!senha.trim()) {
+      setError('Digite sua senha');
+      return;
     }
 
     const result = await login(email, senha);
@@ -46,17 +82,14 @@ export default function LoginScreen({ navigation, route }) {
     // Redirecionamento por role
     if (result.user?.Role === 'estande' || result.user?.Role === 'estandeAdmin') {
       setShowBanner(true);
-      // Navegar após um pequeno delay
       setTimeout(() => {
-      navigation.replace('Main');
+        navigation.replace('Main');
       }, 100);
     } else if (result.user?.Role === 'user') {
       setShowBanner(true);
-      // Navegar após um pequeno delay
       setTimeout(() => {
-      navigation.replace('Main', { screen: 'Eventos' });
+        navigation.replace('Main', { screen: 'Eventos' });
       }, 100);
-    } else {
     }
   };
 
@@ -65,7 +98,7 @@ export default function LoginScreen({ navigation, route }) {
       <View style={styles.card}>
         <Image source={require('../assets/logo.png')} style={styles.logo} />
         <Text style={styles.title}>Bem-vindo</Text>
-        <Text style={styles.subtitle}>Faça login para acessar o evento</Text>
+        <Text style={styles.subtitle}>Digite o e-mail utilizado na compra do ingresso na Sympla</Text>
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -75,26 +108,47 @@ export default function LoginScreen({ navigation, route }) {
           keyboardType="email-address"
           placeholderTextColor="#888"
         />
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={[styles.inputPassword, { color: '#101828' }]}
-            placeholder="Senha"
-            value={senha}
-            onChangeText={setSenha}
-            secureTextEntry={!showPassword}
-            placeholderTextColor="#888"
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Text style={styles.eye}>{showPassword ? '🙈' : '👁️'}</Text>
-          </TouchableOpacity>
-        </View>
+        
+        {showPasswordField && (
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={[styles.inputPassword, { color: '#101828' }]}
+              placeholder="Senha"
+              value={senha}
+              onChangeText={setSenha}
+              secureTextEntry={!showPassword}
+              placeholderTextColor="#888"
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Text style={styles.eye}>{showPassword ? '🙈' : '👁️'}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Entrar</Text>}
+        
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={handleNextOrLogin} 
+          disabled={loading || verifyingEmail}
+        >
+          {loading || verifyingEmail ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {showPasswordField ? 'Entrar' : 'Próximo'}
+            </Text>
+          )}
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={styles.linkContainer}>
-          <Text style={styles.link}>Esqueceu sua senha?</Text>
-        </TouchableOpacity>
+        
+        {showPasswordField && (
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ForgotPassword')} 
+            style={styles.linkContainer}
+          >
+            <Text style={styles.link}>Esqueceu sua senha?</Text>
+          </TouchableOpacity>
+        )}
       </View>
       <TouchableOpacity
         style={styles.helpButton}

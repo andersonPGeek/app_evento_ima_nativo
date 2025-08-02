@@ -67,4 +67,8 @@ export const getCurrentBannerApi = async () => {
       throw error;
     }
   }
+};
+
+export const verificarEmailApi = async (email) => {
+  return axios.get(`${API_BASE}/usuarios/verificar-email/${encodeURIComponent(email)}`);
 }; 

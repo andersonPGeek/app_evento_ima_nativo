@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { TextInput } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
@@ -119,7 +119,7 @@ export default function SyncSymplaScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.title}>Sincronização com Sympla</Text>
+        <Text style={styles.title}>Ops! Não encontramos seu e-mail na base.</Text>
         <Text style={styles.subtitle}>Selecione o evento e informe seu ticket</Text>
 
         <View style={styles.pickerContainer}>
@@ -165,6 +165,15 @@ export default function SyncSymplaScreen({ navigation, route }) {
             <Text style={styles.buttonText}>Sincronizar</Text>
           )}
         </TouchableOpacity>
+
+        <View style={styles.exampleContainer}>
+          <Text style={styles.exampleTitle}>Onde encontrar o código do ticket?</Text>
+          <Image
+            source={require('../../assets/preview_sympla.png')}
+            style={styles.ticketExample}
+            resizeMode="contain"
+          />
+        </View>
       </View>
     </View>
   );
@@ -245,5 +254,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  ticketExample: {
+    width: '100%',
+    height: 120,
+    marginTop: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e3e7ee',
+  },
+  exampleContainer: {
+    width: '100%',
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  exampleTitle: {
+    fontSize: 14,
+    color: '#3a4a5c',
+    marginBottom: 8,
+    textAlign: 'center',
   },
 }); 
