@@ -37,6 +37,15 @@ export const checkinWithQueueApi = async (codigoQr, companyId, token, observacao
   return checkinApi(codigoQr, companyId, token, observacao, storedUserId);
 };
 
+// Nova API para atualizar observação de check-in
+export const updateCheckinObservationApi = async (checkinId, observacao, token) => {
+  return axios.put(`${API_BASE}/checkins/estande/${checkinId}`, {
+    observacao
+  }, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
 export const verificarCodigoApi = async (codigo) => {
   return axios.get(`${API_BASE}/auth/verificar-codigo/${codigo}`);
 };
