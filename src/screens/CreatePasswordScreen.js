@@ -38,7 +38,7 @@ export default function CreatePasswordScreen({ route, navigation }) {
           setShowBanner(true);
           // Navegar após um pequeno delay
           setTimeout(() => {
-            navigation.replace('Main');
+          navigation.replace('Main');
           }, 100);
         } else {
           navigation.navigate('Login', { email });

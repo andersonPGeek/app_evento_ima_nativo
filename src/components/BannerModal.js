@@ -43,22 +43,14 @@ export default function BannerModal({ visible, onClose }) {
         onClose();
       }
     } catch (err) {
-      // Tratar erro de forma silenciosa se for um erro esperado
-      if (err.message === 'BANNER_NOT_FOUND' || err.isExpected) {
-        console.log('🎨 [BANNER] Banner não encontrado - comportamento esperado');
-      } else {
-        console.error('🎨 [BANNER] Erro ao buscar banner:', err);
-      }
       // Não exibir modal quando há erro na API
       onClose();
     } finally {
-      console.log('🎨 [BANNER] Loading finalizado');
       setLoading(false);
     }
   };
 
   const handleClose = () => {
-    console.log('🎨 [BANNER] Banner fechado pelo usuário');
     setBanner(null);
     setShouldShowModal(false);
     onClose();

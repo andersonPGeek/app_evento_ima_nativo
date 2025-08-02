@@ -21,10 +21,20 @@ export const getEmpresaByUserApi = async (userId, token) => {
   });
 };
 
-export const checkinApi = async (codigoQr, companyId, token) => {
-  return axios.post(`${API_BASE}/checkins/estande/${codigoQr}/${companyId}`, {}, {
+export const checkinApi = async (codigoQr, companyId, token, observacao = '', storedUserId) => {
+  return axios.post(`${API_BASE}/checkins/estande/${codigoQr}/${companyId}/${observacao}/${storedUserId}`, {
+  }, {
     headers: { Authorization: `Bearer ${token}` },
   });
+};
+
+// Função para simular processamento via fila Redis
+export const checkinWithQueueApi = async (codigoQr, companyId, token, observacao = '', storedUserId) => {
+  // Simular delay de processamento da fila
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Chamar a API original com observação e storedUserId
+  return checkinApi(codigoQr, companyId, token, observacao, storedUserId);
 };
 
 export const verificarCodigoApi = async (codigo) => {

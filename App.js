@@ -40,23 +40,23 @@ function RootNavigator() {
 
   return (
     <>
-      <Stack.Navigator 
-        screenOptions={{ 
-          headerShown: false,
-          cardStyle: { backgroundColor: '#fff' }
-        }}
-      >
-        {!user ? (
-          <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-            <Stack.Screen name="CreatePassword" component={CreatePasswordScreen} />
-            <Stack.Screen name="SyncSympla" component={SyncSymplaScreen} />
-          </>
-        ) : (
-          <Stack.Screen name="Main" component={BottomTabs} />
-        )}
-      </Stack.Navigator>
+    <Stack.Navigator 
+      screenOptions={{ 
+        headerShown: false,
+        cardStyle: { backgroundColor: '#fff' }
+      }}
+    >
+      {!user ? (
+        <>
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          <Stack.Screen name="CreatePassword" component={CreatePasswordScreen} />
+          <Stack.Screen name="SyncSympla" component={SyncSymplaScreen} />
+        </>
+      ) : (
+        <Stack.Screen name="Main" component={BottomTabs} />
+      )}
+    </Stack.Navigator>
       
       <BannerModal 
         visible={showBanner} 

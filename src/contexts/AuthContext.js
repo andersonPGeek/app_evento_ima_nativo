@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   loginApi,
+  getEmpresaByUserApi,
 } from '../api';
 import Toast from 'react-native-toast-message';
 
@@ -16,13 +17,25 @@ let globalCategoriasCache = null;
 let globalSponsorsCache = null;
 let globalAgendaCache = {};
 
+// Função para limpar cache de QR codes especificamente
+export const clearQrCodeCache = async () => {
+  try {
+    await AsyncStorage.removeItem('qr_codes_read');
+  } catch (error) {
+    console.log('🎯 [AUTH] Erro ao limpar cache de QR codes:', error);
+  }
+};
+
 // Função para limpar todos os caches
-export const clearAllCaches = () => {
+export const clearAllCaches = async () => {
   globalEventsCache = null;
   globalPalestrantesCache = null;
   globalCategoriasCache = null;
   globalSponsorsCache = null;
   globalAgendaCache = {};
+  
+  // Limpar cache de QR codes
+  await clearQrCodeCache();
 };
 
 // Funções para acessar e modificar os caches globais
@@ -42,11 +55,23 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [role, setRole] = useState(null);
   const [ticket, setTicket] = useState(null);
+  const [companyId, setCompanyId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
   const [syncedEmails, setSyncedEmails] = useState(new Set());
   const [showBanner, setShowBanner] = useState(false);
+
+  // Log quando showBanner muda
+  useEffect(() => {
+    console.log('🎯 [AUTH] showBanner alterado para:', showBanner);
+  }, [showBanner]);
+
+  // Log quando user muda
+  useEffect(() => {
+    console.log('🎯 [AUTH] User alterado:', user);
+    console.log('🎯 [AUTH] Role atual:', role);
+  }, [user, role]);
 
   useEffect(() => {
     const loadStorage = async () => {
@@ -57,12 +82,14 @@ export const AuthProvider = ({ children }) => {
         const storedUserId = await AsyncStorage.getItem('userId');
         const storedEmail = await AsyncStorage.getItem('userEmail');
         const storedTicket = await AsyncStorage.getItem('ticket');
+        const storedCompanyId = await AsyncStorage.getItem('companyId');
         const storedSyncedEmails = await AsyncStorage.getItem('syncedEmails');
         
         if (storedToken && storedRole && storedUserId) {
           setToken(storedToken);
           setRole(storedRole);
           setTicket(storedTicket);
+          setCompanyId(storedCompanyId);
           setUser({ 
             id: storedUserId, 
             Role: storedRole,
@@ -143,12 +170,24 @@ export const AuthProvider = ({ children }) => {
       setRole(user.Role);
       setTicket(user.Ticket);
 
+      // Buscar companyId da API
+      let companyId = '';
+      try {
+        const empresaRes = await getEmpresaByUserApi(user.id, token);
+        companyId = empresaRes?.data?.data?.ID_empresa || '';
+        setCompanyId(companyId);
+      } catch (err) {
+        companyId = '';
+        setCompanyId('');
+      }
+
       await Promise.all([
         AsyncStorage.setItem('token', token),
         AsyncStorage.setItem('role', user.Role),
         AsyncStorage.setItem('userId', user.id),
         AsyncStorage.setItem('userEmail', email),
-        AsyncStorage.setItem('ticket', user.Ticket || '')
+        AsyncStorage.setItem('ticket', user.Ticket || ''),
+        AsyncStorage.setItem('companyId', companyId)
       ]);
 
       // Banner será ativado pelo LoginScreen após navegação
@@ -184,10 +223,11 @@ export const AuthProvider = ({ children }) => {
       setToken(null);
       setRole(null);
       setTicket(null);
+      setCompanyId(null); // Limpar CompanyId ao fazer logout
       setError(null);
       setShowBanner(false);
       // Limpar todos os caches ao fazer logout
-      clearAllCaches();
+      await clearAllCaches();
       await AsyncStorage.clear();
     } catch (e) {
       console.error('Erro ao fazer logout:', e);
@@ -201,13 +241,15 @@ export const AuthProvider = ({ children }) => {
       token, 
       role,
       ticket,
+      companyId, // Adicionar companyId ao contexto
       loading, 
       initializing, 
       error,
       login, 
       logout,
       showBanner,
-      setShowBanner
+      setShowBanner,
+      clearQrCodeCache // Exportar função para limpar cache de QR codes
     }}>
       {children}
     </AuthContext.Provider>

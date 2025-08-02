@@ -5,38 +5,25 @@ import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-cont
 import { getEmpresaByUserApi } from '../api';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
+import { useFocusEffect } from '@react-navigation/native';
 
 const API_BASE = 'https://events-br-ima.onrender.com/api';
 
 export default function CheckinListScreen() {
-  const { user, token, role } = useAuth();
+  const { user, token, role, companyId } = useAuth();
   const [checkins, setCheckins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
-  const [companyId, setCompanyId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (!user?.id || !token) return; // Aguarda contexto pronto
-    const fetchCompanyId = async () => {
-      try {
-        const empresaRes = await getEmpresaByUserApi(user.id, token);
-        const id = empresaRes?.data?.data?.ID_empresa;
-        setCompanyId(id || '');
-      } catch (err) {
-        setCompanyId('');
-      }
-    };
-    fetchCompanyId();
-  }, [user, token]);
-
-  useEffect(() => {
-    if (companyId === null) return; // ainda não buscou
-    if (companyId === '') {
+    if (!companyId) {
       setError('ID da empresa não encontrado');
       setLoading(false);
       return;
     }
+    
     const fetchCheckins = async () => {
       try {
         setLoading(true);
@@ -60,6 +47,43 @@ export default function CheckinListScreen() {
     };
     fetchCheckins();
   }, [companyId, token]);
+
+  // Atualizar lista automaticamente quando a tela receber foco
+  useFocusEffect(
+    React.useCallback(() => {
+      
+      if (!companyId) {
+        setError('ID da empresa não encontrado');
+        setLoading(false);
+        return;
+      }
+      
+      const fetchCheckins = async () => {
+        try {
+          setRefreshing(true);
+          setError('');
+          const response = await fetch(`${API_BASE}/checkins/estande/${companyId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setCheckins(data);
+            console.log('🎯 [CHECKINLIST] Lista atualizada com sucesso');
+          } else {
+            setError('Erro ao carregar os checkins');
+          }
+        } catch (err) {
+          setError('Erro ao buscar dados');
+        } finally {
+          setRefreshing(false);
+        }
+      };
+      
+      fetchCheckins();
+    }, [companyId, token])
+  );
 
   const handleExport = async () => {
     if (!companyId || !user?.id) return;
@@ -100,7 +124,15 @@ export default function CheckinListScreen() {
   return (
     <SafeAreaViewContext style={styles.container} edges={['top']}>
       <View style={styles.headerContainer}>
-        <Text style={styles.header}>Leituras Realizadas</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.header}>Leituras Realizadas</Text>
+          {refreshing && (
+            <View style={styles.refreshIndicator}>
+              <ActivityIndicator size="small" color="#2563eb" />
+              <Text style={styles.refreshText}>Atualizando...</Text>
+            </View>
+          )}
+        </View>
         {role === 'estandeAdmin' && (
           <TouchableOpacity 
             style={[styles.exportButton, exporting && styles.exportButtonDisabled]} 
@@ -130,22 +162,26 @@ export default function CheckinListScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={true}>
             <View>
               <View style={styles.tableHeader}>
-                <Text style={[styles.th, { width: 200 }]}>NOME</Text>
-                <Text style={[styles.th, { width: 150 }]}>CARGO</Text>
-                <Text style={[styles.th, { width: 150 }]}>EMPRESA</Text>
-                <Text style={[styles.th, { width: 200 }]}>EMAIL</Text>
-                <Text style={[styles.th, { width: 120 }]}>TEL</Text>
+                <Text style={[styles.th, { width: 150 }]}>NOME</Text>
+                <Text style={[styles.th, { width: 120 }]}>CARGO</Text>
+                <Text style={[styles.th, { width: 120 }]}>EMPRESA</Text>
+                <Text style={[styles.th, { width: 150 }]}>EMAIL</Text>
+                <Text style={[styles.th, { width: 100 }]}>TEL</Text>
+                <Text style={[styles.th, { width: 120 }]}>OBSERVAÇÃO</Text>
+                <Text style={[styles.th, { width: 120 }]}>FUNCIONÁRIO</Text>
               </View>
               <FlatList
                 data={checkins}
                 keyExtractor={(_, idx) => idx.toString()}
                 renderItem={({ item }) => (
                   <View style={styles.tableRow}>
-                    <Text style={[styles.td, { width: 200 }]} numberOfLines={1}>{item.Nome}</Text>
-                    <Text style={[styles.td, { width: 150 }]} numberOfLines={1}>{item.Cargo}</Text>
-                    <Text style={[styles.td, { width: 150 }]} numberOfLines={1}>{item.Empresa}</Text>
-                    <Text style={[styles.td, { width: 200 }]} numberOfLines={1}>{item.Email}</Text>
-                    <Text style={[styles.td, { width: 120 }]} numberOfLines={1}>{item.Telefone_Celular}</Text>
+                    <Text style={[styles.td, { width: 150 }]} numberOfLines={1}>{item.Nome}</Text>
+                    <Text style={[styles.td, { width: 120 }]} numberOfLines={1}>{item.Cargo}</Text>
+                    <Text style={[styles.td, { width: 120 }]} numberOfLines={1}>{item.Empresa}</Text>
+                    <Text style={[styles.td, { width: 150 }]} numberOfLines={1}>{item.Email}</Text>
+                    <Text style={[styles.td, { width: 100 }]} numberOfLines={1}>{item.Telefone_Celular}</Text>
+                    <Text style={[styles.td, { width: 120 }]} numberOfLines={2}>{item.Observacao || '-'}</Text>
+                    <Text style={[styles.td, { width: 120 }]} numberOfLines={1}>{item.funcionario || '-'}</Text>
                   </View>
                 )}
                 ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 32, color: '#888' }}>Nenhum check-in encontrado</Text>}
@@ -169,10 +205,24 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 16,
   },
+  headerLeft: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
   header: { 
     fontSize: 22, 
     fontWeight: 'bold', 
     color: '#101828',
+  },
+  refreshIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  refreshText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#2563eb',
   },
   exportButton: {
     flexDirection: 'row',

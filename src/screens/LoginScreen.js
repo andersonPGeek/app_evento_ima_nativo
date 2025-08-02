@@ -48,13 +48,13 @@ export default function LoginScreen({ navigation, route }) {
       setShowBanner(true);
       // Navegar após um pequeno delay
       setTimeout(() => {
-        navigation.replace('Main');
+      navigation.replace('Main');
       }, 100);
     } else if (result.user?.Role === 'user') {
       setShowBanner(true);
       // Navegar após um pequeno delay
       setTimeout(() => {
-        navigation.replace('Main', { screen: 'Eventos' });
+      navigation.replace('Main', { screen: 'Eventos' });
       }, 100);
     } else {
     }

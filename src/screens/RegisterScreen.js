@@ -58,7 +58,7 @@ const validateCPF = (cpf) => {
 };
 
 export default function RegisterScreen() {
-  const { user, token } = useAuth();
+  const { user, token, companyId } = useAuth();
   const [formData, setFormData] = useState({ Nome: '', CPF: '', Telefone: '', email: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -68,16 +68,19 @@ export default function RegisterScreen() {
 
   // Buscar funcionários ao carregar tela
   useEffect(() => {
-    fetchFuncionarios();
-  }, []);
+    if (companyId) {
+      fetchFuncionarios();
+    }
+  }, [companyId]);
 
   const fetchFuncionarios = async () => {
     setLoadingFuncionarios(true);
     try {
-      // Buscar companyId do estande logado
-      const empresaRes = await getEmpresaByUserApi(user.id, token);
-      const companyId = empresaRes?.data?.data?.ID_empresa;
-      if (!companyId) throw new Error('ID da empresa não encontrado');
+      // Usar companyId do contexto em vez de buscar da API
+      if (!companyId) {
+        throw new Error('ID da empresa não encontrado');
+      }
+      
       // Buscar funcionários
       const res = await fetch(`${API_BASE}/usuarios/empresa/${companyId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -169,11 +172,10 @@ export default function RegisterScreen() {
         throw new Error(errorData.message || 'Erro ao cadastrar usuário');
       }
       const userData = await res.json();
-      // 2. Buscar companyId do estande logado
-      const empresaRes = await getEmpresaByUserApi(user.id, token);
-      const companyId = empresaRes?.data?.data?.ID_empresa;
+      // Usar companyId do contexto em vez de buscar da API
       if (!companyId) throw new Error('ID da empresa não encontrado');
-      // 3. Vincular usuário à empresa
+      
+      // Vincular usuário à empresa
       const res2 = await fetch(`${API_BASE}/empresas/vincular-usuario`, {
         method: 'POST',
         headers: {
