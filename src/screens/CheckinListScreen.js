@@ -25,6 +25,9 @@ export default function CheckinListScreen() {
   const [currentCheckinObservation, setCurrentCheckinObservation] = useState('');
   const [updatingObservation, setUpdatingObservation] = useState(false);
 
+  // Estados para modal de confirmação de exportação
+  const [showExportModal, setShowExportModal] = useState(false);
+
   // Função para calcular larguras dinâmicas das colunas
   const calculateColumnWidths = (data) => {
     if (!data || data.length === 0) {
@@ -151,6 +154,14 @@ export default function CheckinListScreen() {
   const handleExport = async () => {
     if (!companyId || !user?.id) return;
     
+    // Mostrar modal de confirmação primeiro
+    setShowExportModal(true);
+  };
+
+  const handleConfirmExport = async () => {
+    if (!companyId || !user?.id) return;
+    
+    setShowExportModal(false);
     setExporting(true);
     try {
       const response = await fetch(`${API_BASE}/usuarios/checkins/${companyId}/${user.id}`, {
@@ -182,6 +193,10 @@ export default function CheckinListScreen() {
     } finally {
       setExporting(false);
     }
+  };
+
+  const handleCancelExport = () => {
+    setShowExportModal(false);
   };
 
   // Função para abrir modal de observação
@@ -390,6 +405,41 @@ export default function CheckinListScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de Confirmação de Exportação */}
+      <Modal
+        visible={showExportModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancelExport}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.exportModalContent]}>
+            <Text style={styles.modalTitle}>Confirmar Exportação</Text>
+            <Text style={styles.modalText}>
+              A base de dados será enviada para o e-mail:{'\n'}
+              <Text style={styles.emailText}>{user?.email}</Text>
+            </Text>
+            <Text style={styles.modalSubtext}>
+              ⚠️ Verifique também sua caixa de spam após o envio.
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={handleCancelExport}
+              >
+                <Text style={[styles.modalButtonText, styles.cancelButtonText]}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.confirmButton]} 
+                onPress={handleConfirmExport}
+              >
+                <Text style={styles.modalButtonText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaViewContext>
   );
 }
@@ -520,6 +570,12 @@ const styles = StyleSheet.create({
     color: '#101828',
     marginBottom: 16,
   },
+  modalText: {
+    fontSize: 16,
+    color: '#374151',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
   observationInput: {
     width: '100%',
     height: 120,
@@ -558,5 +614,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  emailText: {
+    fontWeight: 'bold',
+    color: '#2563eb',
+  },
+  modalSubtext: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  exportModalContent: {
+    padding: 24,
+  },
+  cancelButton: {
+    backgroundColor: '#e5e7eb',
+    borderColor: '#d1d5db',
+    borderWidth: 1,
+  },
+  cancelButtonText: {
+    color: '#374151',
+  },
+  confirmButton: {
+    backgroundColor: '#2563eb',
   },
 }); 
