@@ -71,4 +71,9 @@ export const getCurrentBannerApi = async () => {
 
 export const verificarEmailApi = async (email) => {
   return axios.get(`${API_BASE}/usuarios/verificar-email/${encodeURIComponent(email)}`);
+};
+
+// Nova API para buscar informações do palestrante no evento
+export const getPalestranteEventoApi = async (palestranteId, eventoId) => {
+  return axios.get(`${API_BASE}/palestrantes/${palestranteId}/evento/${eventoId}`);
 }; 

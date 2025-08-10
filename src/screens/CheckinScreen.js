@@ -47,7 +47,7 @@ export default function CheckinScreen() {
         }
       }
     } catch (error) {
-      console.log('Erro ao carregar cache de QR codes:', error);
+      // Removido console.log desnecessário
     }
   };
 
@@ -60,7 +60,7 @@ export default function CheckinScreen() {
         timestamp: Date.now()
       }));
     } catch (error) {
-      console.log('Erro ao salvar QR code no cache:', error);
+      // Removido console.log desnecessário
     }
   };
 
@@ -74,7 +74,6 @@ export default function CheckinScreen() {
   // Resetar estados quando a tela recebe foco
   useFocusEffect(
     React.useCallback(() => {
-      console.log('🎯 [CHECKIN] Tela recebeu foco - ativando câmera');
       // Resetar todos os estados
       setScanned(false);
       setFeedback(null);
@@ -87,7 +86,6 @@ export default function CheckinScreen() {
       setIsCameraActive(true);
       
       return () => {
-        console.log('🎯 [CHECKIN] Tela perdeu foco - desativando câmera');
         setIsCameraActive(false);
       };
     }, [])
@@ -95,31 +93,18 @@ export default function CheckinScreen() {
 
   // Monitorar mudanças nas permissões da câmera
   useEffect(() => {
-    console.log('🎯 [CHECKIN] Permissão da câmera:', {
-      permission: permission?.granted,
-      status: permission?.status
-    });
+    // Removido console.log desnecessário
   }, [permission]);
 
   // Monitorar mudanças nos estados que afetam a câmera
   useEffect(() => {
-    console.log('🎯 [CHECKIN] Estados da câmera:', {
-      loading,
-      feedback,
-      showObservationModal,
-      isCameraActive,
-      scanned,
-      showBanner,
-      permissionGranted: permission?.granted,
-      permissionStatus: permission?.status
-    });
+    // Removido console.log desnecessário
   }, [loading, feedback, showObservationModal, isCameraActive, scanned, showBanner, permission]);
 
   const handleBarCodeScanned = async ({ data }) => {
     // Verificar se já está processando
     if (loading || processingQrCode) return;
     
-    console.log('🎯 [CHECKIN] Iniciando leitura do QR:', data);
     setScanned(true);
     setFeedback(null);
     setMessage('');
@@ -127,7 +112,6 @@ export default function CheckinScreen() {
     try {
       // 1. Validar padrão do QR code
       if (!validateQrCodePattern(data)) {
-        console.log('🎯 [CHECKIN] Padrão inválido');
         setFeedback('invalid_pattern');
         setMessage('Código QR inválido. Verifique se o código tem 10 caracteres alfanuméricos.');
         return;
@@ -135,7 +119,6 @@ export default function CheckinScreen() {
 
       // 2. Verificar se já foi lido (cache)
       if (qrCodeCache.has(data)) {
-        console.log('🎯 [CHECKIN] Código já lido (cache)');
         setFeedback('warning');
         setMessage('Este código já foi lido anteriormente.');
         return;
@@ -147,7 +130,6 @@ export default function CheckinScreen() {
       }
       
       // 4. Mostrar modal de observação (sem loading)
-      console.log('🎯 [CHECKIN] Validações OK, abrindo modal');
       setCurrentQrCode(data);
       setObservation('');
       setShowObservationModal(true);
@@ -160,8 +142,6 @@ export default function CheckinScreen() {
         // Salvar no cache mesmo se já foi lido em outro dispositivo
         await saveQrCodeToCache(data);
       } else {
-        console.log('🎯 [CHECKIN] Erro na leitura:', err);
-        console.log('QR CODe:', data, 'companyId:', companyId, 'token:', token)
         setFeedback('error');
         setMessage(apiMessage || 'Falha na Leitura');
       }
@@ -169,7 +149,6 @@ export default function CheckinScreen() {
   };
 
   const handleObservationSubmit = async () => {
-    console.log('🎯 [CHECKIN] Confirmando observação');
     setProcessingQrCode(true);
     setShowObservationModal(false);
     setLoading(true); // Adicionar loading
@@ -182,7 +161,6 @@ export default function CheckinScreen() {
       }
 
       // 4. Fazer checkin via fila Redis com observação e storedUserId
-      console.log('🎯 [CHECKIN] Chamando API com observação:', observation, 'storedUserId:', storedUserId);
       await checkinWithQueueApi(currentQrCode, companyId, token, observation, storedUserId);
       
       // 5. Salvar no cache após sucesso
@@ -198,13 +176,10 @@ export default function CheckinScreen() {
         // Salvar no cache mesmo se já foi lido em outro dispositivo
         await saveQrCodeToCache(currentQrCode);
       } else {
-        console.log('🎯 [CHECKIN] Erro na leitura:', err);
-        console.log('QR CODe:', currentQrCode, 'companyId:', companyId, 'token:', token, 'observation:', observation)
         setFeedback('error');
         setMessage(apiMessage || 'Falha na Leitura');
       }
     } finally {
-      console.log('🎯 [CHECKIN] Finalizando processamento');
       setProcessingQrCode(false);
       setCurrentQrCode('');
       setObservation('');
@@ -213,7 +188,6 @@ export default function CheckinScreen() {
   };
 
   const handleObservationCancel = () => {
-    console.log('🎯 [CHECKIN] Cancelando modal de observação');
     setShowObservationModal(false);
     setCurrentQrCode('');
     setObservation('');
@@ -281,19 +255,17 @@ export default function CheckinScreen() {
       )}
       {!loading && !feedback && !showObservationModal && !scanned && !showBanner && isCameraActive && permission?.granted && (
         <>
-          {console.log('🎯 [CHECKIN] Renderizando câmera - loading:', loading, 'feedback:', feedback, 'showObservationModal:', showObservationModal, 'scanned:', scanned, 'showBanner:', showBanner, 'isCameraActive:', isCameraActive, 'permission:', permission?.granted)}
-          <CameraView
-            style={StyleSheet.absoluteFillObject}
-            facing={facing}
-            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+        <CameraView
+          style={StyleSheet.absoluteFillObject}
+          facing={facing}
+          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
             onBarcodeScanned={handleBarCodeScanned}
-          />
+        />
         </>
       )}
       {!loading && !feedback && !showObservationModal && !scanned && !showBanner && isCameraActive && permission?.granted && (
         <>
-          {console.log('🎯 [CHECKIN] Renderizando overlay da câmera - isCameraActive:', isCameraActive, 'permission:', permission?.granted)}
-          <View style={styles.overlay}><Text style={styles.overlayText}>Aponte para o QR Code</Text></View>
+        <View style={styles.overlay}><Text style={styles.overlayText}>Aponte para o QR Code</Text></View>
         </>
       )}
       {!loading && !feedback && !showObservationModal && !scanned && !showBanner && isCameraActive && !permission?.granted && (

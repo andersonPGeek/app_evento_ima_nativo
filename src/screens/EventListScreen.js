@@ -4,6 +4,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth, getEventsCache, setEventsCache, getPalestrantesCache, setPalestrantesCache } from '../contexts/AuthContext';
+import { getPalestranteEventoApi } from '../api';
 
 const API_URL = 'https://events-br-ima.onrender.com/api/eventos';
 const PALESTRANTES_URL = 'https://events-br-ima.onrender.com/api/eventos/palestrante';
@@ -31,7 +32,7 @@ export default function EventListScreen() {
 
   const searchInputRef = useRef(null);
   const navigation = useNavigation();
-  const { user } = useAuth();
+  const { user, setSelectedEventId } = useAuth();
 
   useEffect(() => {
     fetchEvents();
@@ -55,14 +56,24 @@ export default function EventListScreen() {
     setError('');
     try {
       const response = await fetch(`${API_URL}/palestrante`);
-      if (!response.ok) throw new Error('Erro ao buscar eventos');
+      if (!response.ok) {
+        console.error('Erro na resposta da API de eventos:', response.status, response.statusText);
+        setError('Erro ao buscar eventos');
+        setEvents([]);
+        setFilteredEvents([]);
+        return;
+      }
+      
       const data = await response.json();
       const eventos = (data.eventos || []).filter(e => String(e.id) !== '20');
       setEvents(eventos);
       setFilteredEvents(eventos);
       setEventsCache(eventos);
     } catch (err) {
+      console.error('Erro ao buscar eventos:', err);
       setError('Erro ao buscar eventos');
+      setEvents([]);
+      setFilteredEvents([]);
     } finally {
       setLoading(false);
     }
@@ -77,7 +88,12 @@ export default function EventListScreen() {
 
     try {
       const response = await fetch(PALESTRANTES_URL);
-      if (!response.ok) throw new Error('Erro ao buscar palestrantes');
+      if (!response.ok) {
+        console.error('Erro na resposta da API de palestrantes:', response.status, response.statusText);
+        setPalestrantes([]); // Definir array vazio em caso de erro
+        return;
+      }
+      
       const data = await response.json();
 
       // Extrair todos os palestrantes de todos os eventos
@@ -104,6 +120,7 @@ export default function EventListScreen() {
       setPalestrantesCache(uniquePalestrantes);
     } catch (err) {
       console.error('Erro ao buscar palestrantes:', err);
+      setPalestrantes([]); // Definir array vazio em caso de erro
     }
   };
 
@@ -125,7 +142,7 @@ export default function EventListScreen() {
 
   const handlePalestranteSelect = (palestrante) => {
     if (!selectedPalestrantes.find(p => p.id === palestrante.id)) {
-      const novosSelecionados = [...selectedPalestrantes, palestrante];
+      const novosSelecionados = [palestrante];
       setSelectedPalestrantes(novosSelecionados);
       filterEventsByPalestrantes(novosSelecionados);
     }
@@ -165,60 +182,83 @@ export default function EventListScreen() {
     Linking.openURL(url);
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.imageContainer}>
-        <Image source={{ uri: item.foto }} style={styles.image} defaultSource={require('../../assets/logo.png')} />
-        <View style={styles.dateBadge}>
-          <Ionicons name="calendar" size={16} color="#fff" style={{ marginRight: 4 }} />
-          <Text style={styles.dateText}>{formatDateRange(item.dataEvento, item.dataFimEvento)}</Text>
-        </View>
-      </View>
-      <View style={styles.info}>
-        <Text style={styles.title}>{item.nomeEvento}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-          <Ionicons name="calendar" size={16} color="#2563eb" style={{ marginRight: 4 }} />
-          <Text style={styles.dateTextCard}>{formatDateRange(item.dataEvento, item.dataFimEvento)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Ionicons name="location" size={16} color="#2563eb" style={{ marginRight: 4 }} />
-          <Text style={styles.location}>{formatAddress(item)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Ionicons name="people" size={16} color="#2563eb" style={{ marginRight: 4 }} />
-          <Text style={styles.participants}>{item.participantes} participantes</Text>
-        </View>
-        <View style={styles.buttonRow}>
-          <TouchableOpacity 
-            style={styles.button} 
-            onPress={() => {
-              navigation.navigate('Agenda', { 
-                eventId: item.id,
-                dataEvento: item.dataEvento,
-                dataFimEvento: item.dataFimEvento
-              });
-            }}
-          >
-            <Text style={styles.buttonText}>Entrar</Text>
-            <MaterialIcons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 6 }} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.mapButton} onPress={() => openMaps(formatAddress(item))}>
-            <Ionicons name="map" size={20} color="#2563eb" />
-          </TouchableOpacity>
-        </View>
-        {selectedPalestrantes.length > 0 && (
-          <View style={styles.eventPalestrantesRow}>
-            {item.palestrantes?.filter(p => selectedPalestrantes.some(sp => sp.id === p.id)).map(p => (
-              <View key={p.id} style={styles.eventPalestranteBox}>
-                <Image source={{ uri: p.foto }} style={styles.eventPalestranteFoto} defaultSource={require('../../assets/logo.png')} />
-                <Text style={styles.eventPalestranteNome}>{p.nome}</Text>
-              </View>
-            ))}
+  const renderItem = ({ item }) => {
+    // Verificação de segurança
+    if (!item) {
+      return null;
+    }
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.imageContainer}>
+          <Image source={{ uri: item.foto }} style={styles.image} defaultSource={require('../../assets/logo.png')} />
+          <View style={styles.dateBadge}>
+            <Ionicons name="calendar" size={16} color="#fff" style={{ marginRight: 4 }} />
+            <Text style={styles.dateText}>{formatDateRange(item.dataEvento, item.dataFimEvento)}</Text>
           </View>
-        )}
+        </View>
+        <View style={styles.info}>
+          <Text style={styles.title}>{item.nomeEvento || 'Evento sem nome'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <Ionicons name="calendar" size={16} color="#2563eb" style={{ marginRight: 4 }} />
+            <Text style={styles.dateTextCard}>{formatDateRange(item.dataEvento, item.dataFimEvento)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Ionicons name="location" size={16} color="#2563eb" style={{ marginRight: 4 }} />
+            <Text style={styles.location}>{formatAddress(item)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Ionicons name="people" size={16} color="#2563eb" style={{ marginRight: 4 }} />
+            <Text style={styles.participants}>{item.participantes || 0} participantes</Text>
+          </View>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity 
+              style={styles.button} 
+              onPress={async () => {
+                // Definir o evento selecionado no contexto global
+                setSelectedEventId(item.id);
+                
+                let palestranteInfo = null;
+                if (selectedPalestrantes.length > 0) {
+                  try {
+                    const palestrante = selectedPalestrantes[0];
+                    const response = await getPalestranteEventoApi(palestrante.id, item.id);
+                    palestranteInfo = response.data;
+                  } catch (error) {
+                    palestranteInfo = [];
+                  }
+                }
+                
+                navigation.navigate('Agenda', { 
+                  eventId: item.id,
+                  dataEvento: item.dataEvento,
+                  dataFimEvento: item.dataFimEvento,
+                  filteredPalestrantes: selectedPalestrantes,
+                  palestranteInfo: palestranteInfo
+                });
+              }}
+            >
+              <Text style={styles.buttonText}>Entrar</Text>
+              <MaterialIcons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 6 }} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.mapButton} onPress={() => openMaps(formatAddress(item))}>
+              <Ionicons name="map" size={20} color="#2563eb" />
+            </TouchableOpacity>
+          </View>
+          {selectedPalestrantes.length > 0 && (
+            <View style={styles.eventPalestrantesRow}>
+              {item.palestrantes?.filter(p => selectedPalestrantes.some(sp => sp.id === p.id)).map(p => (
+                <View key={p.id} style={styles.eventPalestranteBox}>
+                  <Image source={{ uri: p.foto }} style={styles.eventPalestranteFoto} defaultSource={require('../../assets/logo.png')} />
+                  <Text style={styles.eventPalestranteNome}>{p.nome}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   function formatDateRange(dataInicio, dataFim) {
     if (!dataInicio) return '';
@@ -232,12 +272,13 @@ export default function EventListScreen() {
       let strFim = dateFim.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
       if (strInicio === strFim) return strInicio;
       return `${strInicio} - ${strFim}`;
-    } catch {
+    } catch (error) {
       return '';
     }
   }
 
   function formatAddress(item) {
+    if (!item) return '';
     // Rua, número - bairro, cidade - estado, cep
     return `${item.logradouro || ''}, ${item.numero || ''} - ${item.bairro || ''}, ${item.cidade || ''} - ${item.estado || ''}, ${item.cep || ''}`;
   }
@@ -249,6 +290,9 @@ export default function EventListScreen() {
   if (error) {
     return <SafeAreaView style={styles.center}><Text style={{ color: 'red' }}>{error}</Text></SafeAreaView>;
   }
+
+  // Garantir que filteredEvents seja sempre um array
+  const safeFilteredEvents = Array.isArray(filteredEvents) ? filteredEvents : [];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f3f7fd' }} edges={["top"]}>
@@ -325,11 +369,17 @@ export default function EventListScreen() {
         )}
       </View>
       <FlatList
-        data={filteredEvents}
-        keyExtractor={(item, index) => `${item.id}-${index}`}
+        data={safeFilteredEvents}
+        keyExtractor={(item, index) => `${item?.id || index}-${index}`}
         renderItem={renderItem}
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 32 }}>Nenhum evento encontrado</Text>}
+        ListEmptyComponent={
+          <View style={styles.center}>
+            <Text style={{ textAlign: 'center', marginTop: 32, color: '#888' }}>
+              {loading ? 'Carregando eventos...' : 'Nenhum evento encontrado'}
+            </Text>
+          </View>
+        }
       />
     </SafeAreaView>
   );

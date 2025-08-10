@@ -27,7 +27,7 @@ const handleGlobalError = (error, isFatal) => {
 };
 
 function RootNavigator() {
-  const { user, role, initializing, showBanner, setShowBanner } = useAuth();
+  const { user, role, initializing, showBanner, setShowBanner, bannerLoading } = useAuth();
 
   if (initializing) {
     return (
@@ -57,6 +57,43 @@ function RootNavigator() {
         <Stack.Screen name="Main" component={BottomTabs} />
       )}
     </Stack.Navigator>
+      
+      {/* Loading global do banner */}
+      {bannerLoading && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+        }}>
+          <View style={{
+            backgroundColor: '#fff',
+            borderRadius: 12,
+            padding: 24,
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 4,
+            elevation: 5,
+          }}>
+            <ActivityIndicator size="large" color="#101828" />
+            <Text style={{
+              marginTop: 12,
+              fontSize: 16,
+              color: '#101828',
+              fontWeight: 'bold',
+            }}>
+              Carregando banner...
+            </Text>
+          </View>
+        </View>
+      )}
       
       <BannerModal 
         visible={showBanner} 

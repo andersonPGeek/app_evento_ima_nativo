@@ -22,7 +22,7 @@ export const clearQrCodeCache = async () => {
   try {
     await AsyncStorage.removeItem('qr_codes_read');
   } catch (error) {
-    console.log('🎯 [AUTH] Erro ao limpar cache de QR codes:', error);
+    // Removido console.log desnecessário
   }
 };
 
@@ -61,16 +61,17 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [syncedEmails, setSyncedEmails] = useState(new Set());
   const [showBanner, setShowBanner] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState(null);
+  const [bannerLoading, setBannerLoading] = useState(false);
 
   // Log quando showBanner muda
   useEffect(() => {
-    console.log('🎯 [AUTH] showBanner alterado para:', showBanner);
+    // Removido console.log desnecessário
   }, [showBanner]);
 
   // Log quando user muda
   useEffect(() => {
-    console.log('🎯 [AUTH] User alterado:', user);
-    console.log('🎯 [AUTH] Role atual:', role);
+    // Removido console.log desnecessário
   }, [user, role]);
 
   useEffect(() => {
@@ -249,7 +250,11 @@ export const AuthProvider = ({ children }) => {
       logout,
       showBanner,
       setShowBanner,
-      clearQrCodeCache // Exportar função para limpar cache de QR codes
+      clearQrCodeCache, // Exportar função para limpar cache de QR codes
+      selectedEventId,
+      setSelectedEventId,
+      bannerLoading,
+      setBannerLoading
     }}>
       {children}
     </AuthContext.Provider>

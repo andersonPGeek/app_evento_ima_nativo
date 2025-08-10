@@ -11,10 +11,12 @@ import {
 } from 'react-native';
 import { getCurrentBannerApi } from '../api';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
 export default function BannerModal({ visible, onClose }) {
+  const { setBannerLoading } = useAuth();
   const [banner, setBanner] = useState(null);
   const [loading, setLoading] = useState(true);
   const [shouldShowModal, setShouldShowModal] = useState(false);
@@ -33,6 +35,7 @@ export default function BannerModal({ visible, onClose }) {
   const fetchBanner = async () => {
     try {
       setLoading(true);
+      setBannerLoading(true); // Ativar loading global
       const response = await getCurrentBannerApi();
       
       if (response.data.success && response.data.banner) {
@@ -47,12 +50,14 @@ export default function BannerModal({ visible, onClose }) {
       onClose();
     } finally {
       setLoading(false);
+      setBannerLoading(false); // Desativar loading global
     }
   };
 
   const handleClose = () => {
     setBanner(null);
     setShouldShowModal(false);
+    setBannerLoading(false); // Garantir que loading global seja desativado
     onClose();
   };
 

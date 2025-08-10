@@ -287,7 +287,7 @@ export default function CheckinListScreen() {
     <SafeAreaViewContext style={styles.container} edges={['top']}>
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
-          <Text style={styles.header}>Leituras Realizadas</Text>
+        <Text style={styles.header}>Leituras Realizadas</Text>
           {refreshing && (
             <View style={styles.refreshIndicator}>
               <ActivityIndicator size="small" color="#2563eb" />

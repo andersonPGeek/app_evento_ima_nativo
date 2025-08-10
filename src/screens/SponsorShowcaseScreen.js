@@ -1,15 +1,19 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image, FlatList, ScrollView, StyleSheet, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Image, FlatList, ScrollView, StyleSheet, ActivityIndicator, Linking, Alert } from 'react-native';
 import { Ionicons, AntDesign } from '@expo/vector-icons';
 import { useAuth, getCategoriasCache, setCategoriasCache, getSponsorsCache, setSponsorsCache } from '../contexts/AuthContext';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import telefoneIcon from '../../assets/telefone.png';
 import websiteIcon from '../../assets/website.png';
 import whatsappIcon from '../../assets/whatsapp.png';
 
 const API_BASE = 'https://events-br-ima.onrender.com/api';
 
-export default function SponsorShowcaseScreen() {
+export default function SponsorShowcaseScreen({ route }) {
+  const navigation = useNavigation();
+  const { selectedEventId, setSelectedEventId } = useAuth();
+  
   const { user, token } = useAuth();
   const userId = user?.id;
   const [categorias, setCategorias] = useState(['all']);
@@ -24,68 +28,109 @@ export default function SponsorShowcaseScreen() {
   const [categoriasCache, setCategoriasCache] = useState(null);
   const [sponsorsCache, setSponsorsCache] = useState(null);
 
+  // Verificação do selectedEventId e recarregamento dos dados
   useEffect(() => {
-    const fetchData = async () => {
-      if (dataFetchedRef.current) return;
-      dataFetchedRef.current = true;
-      setLoading(true);
-      try {
-        // Buscar check-ins do usuário (SEM CACHE - interação do usuário)
-        if (userId) {
-          const checkinsResponse = await fetch(`${API_BASE}/usuarios-empresas/usuario/${userId}`);
-          if (checkinsResponse.ok) {
-            const checkinsData = await checkinsResponse.json();
-            const checkinsMap = checkinsData.reduce((acc, curr) => {
-              acc[curr.ID_empresa] = curr.id;
-              return acc;
-            }, {});
-            setCheckedInCompanies(checkinsMap);
+    if (!selectedEventId) {
+      Alert.alert(
+        'Selecione um Evento',
+        'Por favor, selecione um evento na lista de eventos para visualizar os estandes.',
+        [
+          {
+            text: 'Voltar para Eventos',
+            onPress: () => navigation.navigate('Eventos')
           }
-        }
-        
-        // Buscar categorias (COM CACHE)
-        const cachedCategorias = getCategoriasCache();
-        if (cachedCategorias) {
-          setCategorias(cachedCategorias);
-        } else {
-          const categoriasResponse = await fetch(`${API_BASE}/categorias-patrocinio`);
-          if (!categoriasResponse.ok) throw new Error('Erro ao buscar categorias');
-          const categoriasData = await categoriasResponse.json();
-          const tiposPatrocinio = ['all', ...categoriasData.map(cat => cat.Tipo)];
-          setCategorias(tiposPatrocinio);
-          setCategoriasCache(tiposPatrocinio);
-        }
-        
-        // Buscar empresas (COM CACHE)
-        const cachedSponsors = getSponsorsCache();
-        if (cachedSponsors) {
-          setSponsorsList(cachedSponsors);
-        } else {
-          const empresasResponse = await fetch(`${API_BASE}/empresas`);
-          if (!empresasResponse.ok) throw new Error('Erro ao buscar empresas');
-          const empresasData = await empresasResponse.json();
-          const mappedSponsors = empresasData.map(empresa => ({
-            id: empresa.id,
-            name: empresa.nomeEmpresa,
-            tier: empresa.categoriaPatrocinio,
-            logo: empresa.logo,
-            description: empresa.descricao || '',
-            website: empresa.site_web || '',
-            telefone: empresa.telefone || '',
-            contatoComercial: empresa.contato_comercial || '',
-            whatsapp: empresa.site || '',
-          }));
-          setSponsorsList(mappedSponsors);
-          setSponsorsCache(mappedSponsors);
-        }
-      } catch (err) {
-        setError(err.message || 'Erro desconhecido');
-      } finally {
-        setLoading(false);
-      }
-    };
+        ]
+      );
+      return;
+    }
+
+    // Resetar o ref quando o selectedEventId mudar
+    dataFetchedRef.current = false;
+    
     fetchData();
-  }, [userId]);
+  }, [selectedEventId, navigation]);
+
+  const fetchData = async () => {
+    if (dataFetchedRef.current) return;
+    dataFetchedRef.current = true;
+    setLoading(true);
+    try {
+      // Buscar check-ins do usuário (SEM CACHE - interação do usuário)
+      if (userId) {
+        const checkinsResponse = await fetch(`${API_BASE}/usuarios-empresas/usuario/${userId}`);
+        if (checkinsResponse.ok) {
+          const checkinsData = await checkinsResponse.json();
+          const checkinsMap = checkinsData.reduce((acc, curr) => {
+            acc[curr.ID_empresa] = curr.id;
+            return acc;
+          }, {});
+          setCheckedInCompanies(checkinsMap);
+        }
+      }
+      
+      // Buscar categorias (COM CACHE)
+      const cachedCategorias = getCategoriasCache();
+      if (cachedCategorias) {
+        setCategorias(cachedCategorias);
+      } else {
+        const categoriasResponse = await fetch(`${API_BASE}/categorias-patrocinio`);
+        if (!categoriasResponse.ok) throw new Error('Erro ao buscar categorias');
+        const categoriasData = await categoriasResponse.json();
+        const tiposPatrocinio = ['all', ...categoriasData.map(cat => cat.Tipo)];
+        setCategorias(tiposPatrocinio);
+        setCategoriasCache(tiposPatrocinio);
+      }
+      
+      // Buscar empresas (COM CACHE)
+      const cachedSponsors = getSponsorsCache();
+      if (cachedSponsors) {
+        // Filtrar empresas baseado no eventId
+        const filteredSponsors = cachedSponsors.filter(sponsor => 
+          sponsor.ID_eventos && sponsor.ID_eventos.includes(parseInt(selectedEventId))
+        );
+        setSponsorsList(filteredSponsors);
+      } else {
+        const empresasResponse = await fetch(`${API_BASE}/empresas`);
+        if (!empresasResponse.ok) throw new Error('Erro ao buscar empresas');
+        const empresasData = await empresasResponse.json();
+        
+        // Filtrar empresas baseado no eventId
+        const empresasFiltradas = empresasData.filter(empresa => 
+          empresa.ID_eventos && empresa.ID_eventos.includes(parseInt(selectedEventId))
+        );
+        
+        const mappedSponsors = empresasFiltradas.map(empresa => ({
+          id: empresa.id,
+          name: empresa.nomeEmpresa,
+          tier: empresa.categoriaPatrocinio,
+          logo: empresa.logo,
+          description: empresa.descricao || '',
+          website: empresa.site_web || '',
+          telefone: empresa.telefone || '',
+          contatoComercial: empresa.contato_comercial || '',
+          whatsapp: empresa.site || '',
+          ID_eventos: empresa.ID_eventos || [],
+        }));
+        setSponsorsList(mappedSponsors);
+        setSponsorsCache(empresasData.map(empresa => ({
+          id: empresa.id,
+          name: empresa.nomeEmpresa,
+          tier: empresa.categoriaPatrocinio,
+          logo: empresa.logo,
+          description: empresa.descricao || '',
+          website: empresa.site_web || '',
+          telefone: empresa.telefone || '',
+          contatoComercial: empresa.contato_comercial || '',
+          whatsapp: empresa.site || '',
+          ID_eventos: empresa.ID_eventos || [],
+        })));
+      }
+    } catch (err) {
+      setError(err.message || 'Erro desconhecido');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFavoriteChange = async (empresaId, isFavorite, checkInId) => {
     setCheckedInCompanies(prev => {
@@ -127,6 +172,17 @@ export default function SponsorShowcaseScreen() {
   if (error) {
     return <SafeAreaViewContext style={styles.center} edges={['top']}><Text style={{ color: 'red' }}>{error}</Text></SafeAreaViewContext>;
   }
+  
+  if (!selectedEventId) {
+    return (
+      <SafeAreaViewContext style={styles.center} edges={['top']}>
+        <Text style={{ color: '#3a4a5c', textAlign: 'center', padding: 20 }}>
+          Selecione um evento para visualizar os estandes
+        </Text>
+      </SafeAreaViewContext>
+    );
+  }
+  
   if (loading) {
     return <SafeAreaViewContext style={styles.center} edges={['top']}><ActivityIndicator size="large" /><Text>Carregando...</Text></SafeAreaViewContext>;
   }

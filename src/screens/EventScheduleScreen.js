@@ -26,7 +26,8 @@ function formatFirestoreDate(timestamp) {
 
 export default function EventScheduleScreen({ route }) {
   const navigation = useNavigation();
-  const { eventId, dataEvento, dataFimEvento } = route?.params || {};
+  const { eventId, dataEvento, dataFimEvento, filteredPalestrantes, palestranteInfo } = route?.params || {};
+  
   const [stages, setStages] = useState([]);
   const [tracks, setTracks] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -53,6 +54,9 @@ export default function EventScheduleScreen({ route }) {
   const [selectedAgendaDate, setSelectedAgendaDate] = useState(null);
   const [selectedSpeakerIndex, setSelectedSpeakerIndex] = useState(0);
   const [bioModal, setBioModal] = useState({ visible: false, bio: '', name: '' });
+  const [autoFilterApplied, setAutoFilterApplied] = useState(false);
+  const [palestranteLocations, setPalestranteLocations] = useState([]);
+  const [filterClearedManually, setFilterClearedManually] = useState(false);
 
   // Verificação do eventId e recarregamento dos dados
   useEffect(() => {
@@ -73,6 +77,13 @@ export default function EventScheduleScreen({ route }) {
     // Resetar os refs e estados quando o eventId mudar
     eventDataFetchedRef.current = false;
     lecturesFetchedRef.current = {};
+    
+    // Limpar estados relacionados ao filtro automático
+    setAutoFilterApplied(false);
+    setPalestranteLocations([]);
+    setSearchQuery('');
+    setFilterClearedManually(false);
+    
     fetchEventData();
   }, [eventId, navigation]);
 
@@ -92,6 +103,111 @@ export default function EventScheduleScreen({ route }) {
       setSelectedAgendaDate(format(start, 'yyyy-MM-dd'));
     }
   }, [dataEvento, dataFimEvento]);
+
+  // useEffect para aplicar filtro automático de palestrantes
+  useEffect(() => {
+    if (filteredPalestrantes && filteredPalestrantes.length > 0 && !autoFilterApplied && !filterClearedManually) {
+      // Criar uma string de busca com os nomes dos palestrantes filtrados
+      const palestrantesNomes = filteredPalestrantes.map(p => p.nome).join(' ');
+      setSearchQuery(palestrantesNomes);
+      // Remover setAutoFilterApplied(true) daqui - será definido apenas quando os filtros forem aplicados
+      
+      // Mostrar os filtros automaticamente para indicar que há filtro ativo
+      setIsFiltersOpen(true);
+    }
+  }, [filteredPalestrantes, autoFilterApplied, filterClearedManually]);
+
+  // useEffect para resetar filterClearedManually quando filteredPalestrantes ou palestranteInfo mudarem
+  useEffect(() => {
+    if ((filteredPalestrantes && filteredPalestrantes.length > 0) || (palestranteInfo && palestranteInfo.length > 0)) {
+      setFilterClearedManually(false);
+      setAutoFilterApplied(false);
+    }
+  }, [filteredPalestrantes, palestranteInfo]);
+
+  // useEffect para aplicar filtros baseados nas informações do palestrante
+  useEffect(() => {
+    
+    if (palestranteInfo && palestranteInfo.length > 0 && !autoFilterApplied && !filterClearedManually && stages.length > 0 && tracks.length > 0) {
+      
+      // Salvar todas as localizações do palestrante para indicadores visuais
+      setPalestranteLocations(palestranteInfo);
+      
+      // Aplicar o primeiro item como filtro padrão
+      const firstLocation = palestranteInfo[0];
+      if (firstLocation) {
+        // Aplicar filtro de trilha
+        if (firstLocation.ID_trilha) {
+          setSelectedTrack(firstLocation.ID_trilha);
+        }
+        
+        // Aplicar filtro de palco
+        if (firstLocation.ID_palco) {
+          setSelectedStage(firstLocation.ID_palco);
+        }
+        
+        // Aplicar filtro de data
+        if (firstLocation.dataProgramacao) {
+          const dateStr = firstLocation.dataProgramacao.slice(0, 10); // YYYY-MM-DD
+          setSelectedAgendaDate(dateStr);
+        }
+      }
+      
+      setAutoFilterApplied(true);
+      setIsFiltersOpen(true);
+    }
+  }, [palestranteInfo, autoFilterApplied, filterClearedManually, stages.length, tracks.length]);
+
+  // Função para verificar se uma data tem o palestrante
+  const hasPalestranteOnDate = (dateStr) => {
+    return palestranteLocations.some(location => 
+      location.dataProgramacao && location.dataProgramacao.slice(0, 10) === dateStr
+    );
+  };
+
+  // Função para verificar se um palco tem o palestrante
+  const hasPalestranteOnStage = (stageId) => {
+    const hasPalestrante = palestranteLocations.some(location => 
+      location.ID_palco === stageId
+    );
+    return hasPalestrante;
+  };
+
+  // Função para limpar o filtro automático
+  const clearAutoFilter = () => {
+    
+    // 1. Limpar campo de busca
+    setSearchQuery('');
+    
+    // 2. Resetar flag de filtro automático
+    setAutoFilterApplied(false);
+    
+    // 3. Marcar que o filtro foi limpo manualmente
+    setFilterClearedManually(true);
+    
+    // 4. Limpar localizações do palestrante
+    setPalestranteLocations([]);
+    
+    // 5. Recolher os filtros (fechar a seção)
+    setIsFiltersOpen(false);
+    
+    // 6. Resetar trilha para primeira opção
+    if (tracks.length > 0) {
+      setSelectedTrack(tracks[0].id);
+    }
+    
+    // 7. Resetar palco para primeira opção
+    if (stages.length > 0) {
+      setSelectedStage(stages[0].id);
+    }
+    
+    // 8. Resetar data para primeira opção
+    if (availableDates.length > 0) {
+      const defaultDate = format(availableDates[0], 'yyyy-MM-dd');
+      setSelectedAgendaDate(defaultDate);
+    }
+    
+  };
 
   const fetchEventData = async () => {
     if (!eventId) return;
@@ -246,9 +362,21 @@ export default function EventScheduleScreen({ route }) {
         return session.dataProgramacao.slice(0, 10) === selectedAgendaDate;
       })
     : sessions.filter((session) => {
-        if (!selectedAgendaDate) return (session.speakers?.length > 0 ? session.speakers[0].name : '').toLowerCase().includes(searchQuery.toLowerCase());
-        if (!session.dataProgramacao) return (session.speakers?.length > 0 ? session.speakers[0].name : '').toLowerCase().includes(searchQuery.toLowerCase());
-        return session.dataProgramacao.slice(0, 10) === selectedAgendaDate && (session.speakers?.length > 0 ? session.speakers[0].name : '').toLowerCase().includes(searchQuery.toLowerCase());
+        // Verificar se a sessão tem palestrantes
+        if (!session.speakers || session.speakers.length === 0) return false;
+        
+        // Verificar se qualquer palestrante da sessão corresponde à busca
+        const sessionHasMatchingSpeaker = session.speakers.some(speaker => 
+          speaker.name && speaker.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        
+        // Se não há data selecionada, retornar baseado apenas no palestrante
+        if (!selectedAgendaDate) return sessionHasMatchingSpeaker;
+        
+        // Se há data selecionada, verificar tanto palestrante quanto data
+        if (!session.dataProgramacao) return sessionHasMatchingSpeaker;
+        
+        return session.dataProgramacao.slice(0, 10) === selectedAgendaDate && sessionHasMatchingSpeaker;
       });
   const timeSlots = filteredSessions.reduce((acc, session) => {
     const existingSlot = acc.find(slot => slot.time === session.time);
@@ -387,7 +515,15 @@ export default function EventScheduleScreen({ route }) {
     <SafeAreaViewContext style={{ flex: 1, backgroundColor: '#f3f7fd' }} edges={["top"]}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <Text style={styles.header}>Agenda do Evento</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.header}>Agenda do Evento</Text>
+          {autoFilterApplied && (
+            <View style={styles.headerFilterIndicator}>
+              <Ionicons name="funnel" size={14} color="#10b981" />
+              <Text style={styles.headerFilterText}>Filtro ativo</Text>
+            </View>
+          )}
+        </View>
         <TouchableOpacity style={styles.filterButton} onPress={() => setIsFiltersOpen(v => !v)}>
           <Feather name="filter" size={20} color="#101828" />
           <Text style={styles.filterButtonText}>Filtros</Text>
@@ -395,13 +531,27 @@ export default function EventScheduleScreen({ route }) {
       </View>
       {isFiltersOpen && (
         <View style={styles.filtersBox}>
-          <TextInput
-            style={styles.input}
-            placeholder="Buscar palestrante..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#888"
-          />
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={[styles.input, autoFilterApplied && styles.inputWithFilter]}
+              placeholder="Buscar palestrante..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#888"
+            />
+            {autoFilterApplied && (
+              <View style={styles.filterIndicator}>
+                <TouchableOpacity 
+                  onPress={clearAutoFilter} 
+                  style={styles.clearFilterButton}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close-circle" size={20} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
           {/* Filtro de trilha */}
           <View style={styles.pickerRow}>
             <View style={{ flex: 1 }}>
@@ -443,22 +593,31 @@ export default function EventScheduleScreen({ route }) {
               {filteredDates.length > 0
                 ? filteredDates.map((dateObj) => {
                     const dateStr = format(dateObj, 'yyyy-MM-dd');
+                    const hasPalestrante = hasPalestranteOnDate(dateStr);
                     return (
-                      <TouchableOpacity
-                        key={dateStr}
-                        style={[
-                          styles.dateButton,
-                          selectedAgendaDate === dateStr && styles.dateButtonActive
-                        ]}
-                        onPress={() => setSelectedAgendaDate(dateStr)}
-                      >
-                        <Text style={[
-                          styles.dateButtonText,
-                          selectedAgendaDate === dateStr && styles.dateButtonTextActive
-                        ]}>
-                          {format(dateObj, 'dd/MM/yyyy')}
-                        </Text>
-                      </TouchableOpacity>
+                      <View key={dateStr} style={{ position: 'relative' }}>
+                        <TouchableOpacity
+                          style={[
+                            styles.dateButton,
+                            selectedAgendaDate === dateStr && styles.dateButtonActive,
+                            hasPalestrante && !selectedAgendaDate === dateStr && styles.dateButtonWithPalestrante
+                          ]}
+                          onPress={() => setSelectedAgendaDate(dateStr)}
+                        >
+                          <Text style={[
+                            styles.dateButtonText,
+                            selectedAgendaDate === dateStr && styles.dateButtonTextActive,
+                            hasPalestrante && !selectedAgendaDate === dateStr && styles.dateButtonTextWithPalestrante
+                          ]}>
+                            {format(dateObj, 'dd/MM/yyyy')}
+                          </Text>
+                        </TouchableOpacity>
+                        {hasPalestrante && (
+                          <View style={styles.palestranteIndicator}>
+                            <Ionicons name="person" size={10} color="#10b981" />
+                          </View>
+                        )}
+                      </View>
                     );
                   })
                 : (
@@ -480,14 +639,31 @@ export default function EventScheduleScreen({ route }) {
         >
           {Array.isArray(stages) && stages.length > 0
             ? stages.map(stage => {
+                const hasPalestrante = hasPalestranteOnStage(stage.id);
                 return (
-                  <TouchableOpacity
-                    key={stage.id}
-                    style={[styles.tab, selectedStage === stage.id && !showingMap ? styles.tabActive : null]}
-                    onPress={() => { setShowingMap(false); setSelectedStage(stage.id); }}
-                  >
-                    <Text style={[styles.tabText, selectedStage === stage.id && !showingMap ? styles.tabTextActive : null]}>{stage.nomePalco}</Text>
-                  </TouchableOpacity>
+                  <View key={stage.id} style={{ position: 'relative' }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.tab, 
+                        selectedStage === stage.id && !showingMap ? styles.tabActive : null,
+                        hasPalestrante && selectedStage !== stage.id && !showingMap && styles.tabWithPalestrante
+                      ]}
+                      onPress={() => { setShowingMap(false); setSelectedStage(stage.id); }}
+                    >
+                      <Text style={[
+                        styles.tabText, 
+                        selectedStage === stage.id && !showingMap ? styles.tabTextActive : null,
+                        hasPalestrante && selectedStage !== stage.id && !showingMap && styles.tabTextWithPalestrante
+                      ]}>
+                        {stage.nomePalco}
+                      </Text>
+                    </TouchableOpacity>
+                    {hasPalestrante && (
+                      <View style={styles.palestranteIndicator}>
+                        <Ionicons name="person" size={10} color="#10b981" />
+                      </View>
+                    )}
+                  </View>
                 );
               })
             : (
@@ -805,7 +981,25 @@ function SessionDetailsModal({ session, user, token, onClose }) {
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f7fd' },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, paddingBottom: 0 },
+  headerLeft: { flexDirection: 'column', alignItems: 'flex-start' },
   header: { fontSize: 22, fontWeight: 'bold', color: '#101828' },
+  headerFilterIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#a7dbd8',
+  },
+  headerFilterText: {
+    color: '#10b981',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
   filterButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, elevation: 2 },
   filterButtonText: { marginLeft: 6, color: '#101828', fontWeight: 'bold' },
   filtersBox: { backgroundColor: '#fff', margin: 16, borderRadius: 12, padding: 16, elevation: 2 },
@@ -997,6 +1191,26 @@ const styles = StyleSheet.create({
   dateButtonTextActive: {
     color: '#fff',
   },
+  dateButtonWithPalestrante: {
+    borderColor: '#10b981',
+    borderWidth: 2,
+  },
+  dateButtonTextWithPalestrante: {
+    color: '#10b981',
+  },
+  palestranteIndicator: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#10b981',
+  },
   specialImage: {
     width: '100%',
     height: 90,
@@ -1020,5 +1234,44 @@ const styles = StyleSheet.create({
     color: '#2563eb',
     fontSize: 13,
     fontWeight: 'bold',
+  },
+  searchContainer: {
+    position: 'relative',
+  },
+  inputWithFilter: {
+    paddingRight: 40, // Espaço para o ícone de filtro
+  },
+  filterIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+    zIndex: 10,
+  },
+  filterIndicatorText: {
+    color: '#10b981',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  clearFilterButton: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tabWithPalestrante: {
+    borderColor: '#10b981',
+    borderWidth: 2,
+  },
+  tabTextWithPalestrante: {
+    color: '#10b981',
   },
 }); 

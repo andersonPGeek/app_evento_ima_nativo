@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { verificarEmailApi } from '../api';
 
 export default function LoginScreen({ navigation, route }) {
-  const { login, loading, setShowBanner } = useAuth();
+  const { login, loading, setShowBanner, setBannerLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -66,7 +66,7 @@ export default function LoginScreen({ navigation, route }) {
     
     if (!senha.trim()) {
       setError('Digite sua senha');
-      return;
+        return;
     }
 
     const result = await login(email, senha);
@@ -81,14 +81,16 @@ export default function LoginScreen({ navigation, route }) {
 
     // Redirecionamento por role
     if (result.user?.Role === 'estande' || result.user?.Role === 'estandeAdmin') {
+      setBannerLoading(true); // Ativar loading do banner
       setShowBanner(true);
       setTimeout(() => {
-        navigation.replace('Main');
+      navigation.replace('Main');
       }, 100);
     } else if (result.user?.Role === 'user') {
+      setBannerLoading(true); // Ativar loading do banner
       setShowBanner(true);
       setTimeout(() => {
-        navigation.replace('Main', { screen: 'Eventos' });
+      navigation.replace('Main', { screen: 'Eventos' });
       }, 100);
     }
   };
@@ -110,19 +112,19 @@ export default function LoginScreen({ navigation, route }) {
         />
         
         {showPasswordField && (
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={[styles.inputPassword, { color: '#101828' }]}
-              placeholder="Senha"
-              value={senha}
-              onChangeText={setSenha}
-              secureTextEntry={!showPassword}
-              placeholderTextColor="#888"
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Text style={styles.eye}>{showPassword ? '🙈' : '👁️'}</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={[styles.inputPassword, { color: '#101828' }]}
+            placeholder="Senha"
+            value={senha}
+            onChangeText={setSenha}
+            secureTextEntry={!showPassword}
+            placeholderTextColor="#888"
+          />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Text style={styles.eye}>{showPassword ? '🙈' : '👁️'}</Text>
+          </TouchableOpacity>
+        </View>
         )}
         
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -146,8 +148,8 @@ export default function LoginScreen({ navigation, route }) {
             onPress={() => navigation.navigate('ForgotPassword')} 
             style={styles.linkContainer}
           >
-            <Text style={styles.link}>Esqueceu sua senha?</Text>
-          </TouchableOpacity>
+          <Text style={styles.link}>Esqueceu sua senha?</Text>
+        </TouchableOpacity>
         )}
       </View>
       <TouchableOpacity
