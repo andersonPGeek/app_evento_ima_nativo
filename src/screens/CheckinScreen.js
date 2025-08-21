@@ -34,41 +34,103 @@ export default function CheckinScreen() {
     loadQrCodeCache();
   }, []);
 
+  // Validar padrão do QR code
+  const validateQrCodePattern = (code) => {
+    // Verificar se o código é uma string válida
+    if (!code || typeof code !== 'string') {
+      return false;
+    }
+    
+    // Padrão: 10 caracteres alfanuméricos, todas maiúsculas, sem caracteres especiais
+    const pattern = /^[A-Z0-9]{10}$/;
+    
+    try {
+      return pattern.test(code);
+    } catch (error) {
+      // Em caso de qualquer erro na validação, retorna false
+      return false;
+    }
+  };
+
   const loadQrCodeCache = async () => {
     try {
       const cached = await AsyncStorage.getItem(QR_CODE_CACHE_KEY);
       if (cached) {
-        const { codes, timestamp } = JSON.parse(cached);
-        // Limpar cache se expirou
-        if (Date.now() - timestamp < CACHE_DURATION) {
-          setQrCodeCache(new Set(codes));
+        const parsedData = JSON.parse(cached);
+        
+        // Verificar se os dados estão no formato esperado
+        if (parsedData && Array.isArray(parsedData.codes) && typeof parsedData.timestamp === 'number') {
+          // Limpar cache se expirou
+          if (Date.now() - parsedData.timestamp < CACHE_DURATION) {
+            setQrCodeCache(new Set(parsedData.codes));
+          } else {
+            await AsyncStorage.removeItem(QR_CODE_CACHE_KEY);
+            setQrCodeCache(new Set());
+          }
         } else {
+          // Dados corrompidos, limpar cache
           await AsyncStorage.removeItem(QR_CODE_CACHE_KEY);
+          setQrCodeCache(new Set());
         }
+      } else {
+        setQrCodeCache(new Set());
       }
     } catch (error) {
-      // Removido console.log desnecessário
+      // Em caso de erro, inicializar cache vazio e continuar funcionamento
+      setQrCodeCache(new Set());
+      // Tentar limpar dados corrompidos
+      try {
+        await AsyncStorage.removeItem(QR_CODE_CACHE_KEY);
+      } catch (clearError) {
+        // Ignorar erro de limpeza
+      }
     }
   };
 
   const saveQrCodeToCache = async (code) => {
+    // Verificar se o código é válido antes de salvar
+    if (!code || typeof code !== 'string') {
+      return;
+    }
+    
     try {
-      const newCache = new Set(qrCodeCache).add(code);
+      // Garantir que qrCodeCache existe
+      const currentCache = qrCodeCache || new Set();
+      const newCache = new Set(currentCache).add(code);
+      
       setQrCodeCache(newCache);
-      await AsyncStorage.setItem(QR_CODE_CACHE_KEY, JSON.stringify({
+      
+      const dataToSave = {
         codes: Array.from(newCache),
         timestamp: Date.now()
-      }));
+      };
+      
+      await AsyncStorage.setItem(QR_CODE_CACHE_KEY, JSON.stringify(dataToSave));
     } catch (error) {
-      // Removido console.log desnecessário
+      // Se falhar ao salvar no cache, continuar funcionamento normal
+      // Pelo menos manter o cache em memória
+      try {
+        const currentCache = qrCodeCache || new Set();
+        const newCache = new Set(currentCache).add(code);
+        setQrCodeCache(newCache);
+      } catch (memoryError) {
+        // Se até o cache em memória falhar, continuar sem cache
+      }
     }
   };
 
-  // Validar padrão do QR code
-  const validateQrCodePattern = (code) => {
-    // Padrão: 10 caracteres alfanuméricos, todas maiúsculas, sem caracteres especiais
-    const pattern = /^[A-Z0-9]{10}$/;
-    return pattern.test(code);
+  const isCodeInCache = (code) => {
+    try {
+      // Verificar se o código e o cache são válidos
+      if (!code || typeof code !== 'string' || !qrCodeCache) {
+        return false;
+      }
+      
+      return qrCodeCache.has(code);
+    } catch (error) {
+      // Em caso de erro, assumir que não está no cache
+      return false;
+    }
   };
 
   // Resetar estados quando a tela recebe foco
@@ -118,7 +180,7 @@ export default function CheckinScreen() {
       }
 
       // 2. Verificar se já foi lido (cache)
-      if (qrCodeCache.has(data)) {
+      if (isCodeInCache(data)) {
         setFeedback('warning');
         setMessage('Este código já foi lido anteriormente.');
         return;
@@ -140,7 +202,11 @@ export default function CheckinScreen() {
         setFeedback('warning');
         setMessage(apiMessage);
         // Salvar no cache mesmo se já foi lido em outro dispositivo
-        await saveQrCodeToCache(data);
+        try {
+          await saveQrCodeToCache(data);
+        } catch (cacheError) {
+          // Ignorar erros de cache - não deve afetar o fluxo principal
+        }
       } else {
         setFeedback('error');
         setMessage(apiMessage || 'Falha na Leitura');
@@ -164,7 +230,11 @@ export default function CheckinScreen() {
       await checkinWithQueueApi(currentQrCode, companyId, token, observation, storedUserId);
       
       // 5. Salvar no cache após sucesso
-      await saveQrCodeToCache(currentQrCode);
+      try {
+        await saveQrCodeToCache(currentQrCode);
+      } catch (cacheError) {
+        // Ignorar erros de cache - não deve afetar o fluxo principal
+      }
       
       setFeedback('success');
       setMessage('Leitura Realizada');
@@ -174,7 +244,11 @@ export default function CheckinScreen() {
         setFeedback('warning');
         setMessage(apiMessage);
         // Salvar no cache mesmo se já foi lido em outro dispositivo
-        await saveQrCodeToCache(currentQrCode);
+        try {
+          await saveQrCodeToCache(currentQrCode);
+        } catch (cacheError) {
+          // Ignorar erros de cache - não deve afetar o fluxo principal
+        }
       } else {
         setFeedback('error');
         setMessage(apiMessage || 'Falha na Leitura');
@@ -289,7 +363,7 @@ export default function CheckinScreen() {
             <Text style={styles.modalTitle}>Inclua alguma informação que facilite o seu contato com esta pessoa</Text>
             <TextInput
               style={styles.observationInput}
-              placeholder="Digite a observação (opcional)"
+              placeholder="Digite a observação"
               multiline
               numberOfLines={6}
               value={observation}
@@ -417,7 +491,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     fontSize: 16,
     color: '#101828',
-    minHeight: 120,
+    minHeight: 60,
   },
   charCount: {
     alignSelf: 'flex-end',
