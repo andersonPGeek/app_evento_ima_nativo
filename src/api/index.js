@@ -73,6 +73,15 @@ export const verificarEmailApi = async (email) => {
   return axios.get(`${API_BASE}/usuarios/verificar-email/${encodeURIComponent(email)}`);
 };
 
+// Nova API para verificar CPF na recuperação de senha
+export const verificarCpfApi = async (email, role, ultimosDigitosCPF) => {
+  return axios.post(`${API_BASE}/usuarios/verificar-cpf`, {
+    Email: email,
+    Role: role,
+    ultimosDigitosCPF: ultimosDigitosCPF
+  });
+};
+
 // Nova API para buscar informações do palestrante no evento
 export const getPalestranteEventoApi = async (palestranteId, eventoId) => {
   return axios.get(`${API_BASE}/palestrantes/${palestranteId}/evento/${eventoId}`);
