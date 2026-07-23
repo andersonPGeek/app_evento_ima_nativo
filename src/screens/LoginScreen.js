@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { verificarEmailApi } from '../api';
 
 export default function LoginScreen({ navigation, route }) {
-  const { login, loading, setShowBanner, setBannerLoading } = useAuth();
+  const { login, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -81,17 +81,9 @@ export default function LoginScreen({ navigation, route }) {
 
     // Redirecionamento por role
     if (result.user?.Role === 'estande' || result.user?.Role === 'estandeAdmin') {
-      setBannerLoading(true); // Ativar loading do banner
-      setShowBanner(true);
-      setTimeout(() => {
       navigation.replace('Main');
-      }, 100);
     } else if (result.user?.Role === 'user') {
-      setBannerLoading(true); // Ativar loading do banner
-      setShowBanner(true);
-      setTimeout(() => {
-      navigation.replace('Main', { screen: 'Eventos' });
-      }, 100);
+      navigation.replace('Main');
     }
   };
 
@@ -100,7 +92,7 @@ export default function LoginScreen({ navigation, route }) {
       <View style={styles.card}>
         <Image source={require('../assets/logo.png')} style={styles.logo} />
         <Text style={styles.title}>Bem-vindo</Text>
-        <Text style={styles.subtitle}>Digite o e-mail utilizado na compra do ingresso na Sympla</Text>
+        <Text style={styles.subtitle}>Digite o e-mail informado aos organizadores do evento ou cadastrado no aplicativo</Text>
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -152,17 +144,6 @@ export default function LoginScreen({ navigation, route }) {
         </TouchableOpacity>
         )}
       </View>
-      <TouchableOpacity
-        style={styles.helpButton}
-        onPress={() => Linking.openURL('https://chatgpt.com/g/g-68715dfbd0e08191a6a9f22baf2b3a0b-atendente-app-iima-eventos')}
-        activeOpacity={0.8}
-      >
-        <Image
-          source={require('../../assets/atendente.png')}
-          style={styles.helpImage}
-        />
-        <Text style={styles.helpText}>Posso te ajudar?</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -258,27 +239,5 @@ const styles = StyleSheet.create({
     color: 'red',
     marginBottom: 8,
     textAlign: 'center',
-  },
-  helpButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 24,
-    backgroundColor: '#101828', // preto do app
-    borderRadius: 24,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    elevation: 2,
-  },
-  helpImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  helpText: {
-    fontSize: 16,
-    color: '#fff', // branco
-    fontWeight: 'bold',
   },
 }); 

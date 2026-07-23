@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
-import { getEmpresaByUserApi, updateCheckinObservationApi } from '../api';
+import { updateCheckinObservationApi } from '../api';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useFocusEffect } from '@react-navigation/native';
@@ -90,16 +90,18 @@ export default function CheckinListScreen() {
       setLoading(false);
       return;
     }
-    
+
     const fetchCheckins = async () => {
       try {
         setLoading(true);
         setError('');
+
         const response = await fetch(`${API_BASE}/checkins/estande/${companyId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
+
         if (response.ok) {
           const data = await response.json();
           setCheckins(data);
@@ -118,22 +120,23 @@ export default function CheckinListScreen() {
   // Atualizar lista automaticamente quando a tela receber foco
   useFocusEffect(
     React.useCallback(() => {
-      
       if (!companyId) {
         setError('ID da empresa não encontrado');
         setLoading(false);
         return;
       }
-      
+
       const fetchCheckins = async () => {
         try {
           setRefreshing(true);
           setError('');
+
           const response = await fetch(`${API_BASE}/checkins/estande/${companyId}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
           });
+
           if (response.ok) {
             const data = await response.json();
             setCheckins(data);
@@ -146,23 +149,23 @@ export default function CheckinListScreen() {
           setRefreshing(false);
         }
       };
-      
+
       fetchCheckins();
     }, [companyId, token])
   );
 
   const handleExport = async () => {
     if (!companyId || !user?.id) return;
-    
-    // Mostrar modal de confirmação primeiro
+
     setShowExportModal(true);
   };
 
   const handleConfirmExport = async () => {
     if (!companyId || !user?.id) return;
-    
+
     setShowExportModal(false);
     setExporting(true);
+
     try {
       const response = await fetch(`${API_BASE}/usuarios/checkins/${companyId}/${user.id}`, {
         method: 'GET',
@@ -218,7 +221,6 @@ export default function CheckinListScreen() {
     setShowObservationModal(true);
   };
 
-  // Função para confirmar observação
   const handleObservationSubmit = async () => {
     if (!currentCheckinId) {
       Toast.show({
@@ -233,15 +235,13 @@ export default function CheckinListScreen() {
     
     setUpdatingObservation(true);
     try {
-      // Obter token do AsyncStorage
       const storedToken = await AsyncStorage.getItem('token');
-      
+
       if (!storedToken) {
         throw new Error('Token não encontrado');
       }
 
       await updateCheckinObservationApi(currentCheckinId, observation, storedToken);
-      
       // Atualizar a lista local
       setCheckins(prevCheckins => 
         prevCheckins.map(checkin => 

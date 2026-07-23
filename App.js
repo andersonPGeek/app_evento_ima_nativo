@@ -7,7 +7,6 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import CreatePasswordScreen from './src/screens/CreatePasswordScreen';
 import SyncSymplaScreen from './src/screens/SyncSymplaScreen';
 import BottomTabs from './src/navigation/BottomTabs';
-import BannerModal from './src/components/BannerModal';
 import { ActivityIndicator, View, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -27,7 +26,7 @@ const handleGlobalError = (error, isFatal) => {
 };
 
 function RootNavigator() {
-  const { user, role, initializing, showBanner, setShowBanner, bannerLoading } = useAuth();
+  const { user, initializing } = useAuth();
 
   if (initializing) {
     return (
@@ -57,48 +56,6 @@ function RootNavigator() {
         <Stack.Screen name="Main" component={BottomTabs} />
       )}
     </Stack.Navigator>
-      
-      {/* Loading global do banner */}
-      {bannerLoading && (
-        <View style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 9999,
-        }}>
-          <View style={{
-            backgroundColor: '#fff',
-            borderRadius: 12,
-            padding: 24,
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 4,
-            elevation: 5,
-          }}>
-            <ActivityIndicator size="large" color="#101828" />
-            <Text style={{
-              marginTop: 12,
-              fontSize: 16,
-              color: '#101828',
-              fontWeight: 'bold',
-            }}>
-              Carregando banner...
-            </Text>
-          </View>
-        </View>
-      )}
-      
-      <BannerModal 
-        visible={showBanner} 
-        onClose={() => setShowBanner(false)} 
-      />
     </>
   );
 }
@@ -126,10 +83,6 @@ export default function App() {
         >
           <RootNavigator />
         </NavigationContainer>
-        <BannerModal 
-          visible={false} 
-          onClose={() => {}} 
-        />
       </AuthProvider>
       <Toast />
     </SafeAreaProvider>

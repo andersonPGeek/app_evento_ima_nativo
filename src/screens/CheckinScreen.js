@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { getEmpresaByUserApi, checkinWithQueueApi } from '../api';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Modal, TextInput } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { checkinWithQueueApi } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ const QR_CODE_CACHE_KEY = 'qr_codes_read';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 horas em millisegundos
 
 export default function CheckinScreen() {
-  const { user, token, companyId, showBanner } = useAuth();
+  const { token, companyId, showBanner } = useAuth();
   const [facing, setFacing] = useState('back');
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
@@ -22,7 +22,7 @@ export default function CheckinScreen() {
   const [message, setMessage] = useState('');
   const [isCameraActive, setIsCameraActive] = useState(true);
   const [qrCodeCache, setQrCodeCache] = useState(new Set());
-  
+
   // Modal de observação
   const [showObservationModal, setShowObservationModal] = useState(false);
   const [observation, setObservation] = useState('');
@@ -36,18 +36,15 @@ export default function CheckinScreen() {
 
   // Validar padrão do QR code
   const validateQrCodePattern = (code) => {
-    // Verificar se o código é uma string válida
     if (!code || typeof code !== 'string') {
       return false;
     }
-    
-    // Padrão: 10 caracteres alfanuméricos, todas maiúsculas, sem caracteres especiais
+
     const pattern = /^[A-Z0-9]{10}$/;
-    
+
     try {
       return pattern.test(code);
     } catch (error) {
-      // Em caso de qualquer erro na validação, retorna false
       return false;
     }
   };
@@ -57,10 +54,8 @@ export default function CheckinScreen() {
       const cached = await AsyncStorage.getItem(QR_CODE_CACHE_KEY);
       if (cached) {
         const parsedData = JSON.parse(cached);
-        
-        // Verificar se os dados estão no formato esperado
+
         if (parsedData && Array.isArray(parsedData.codes) && typeof parsedData.timestamp === 'number') {
-          // Limpar cache se expirou
           if (Date.now() - parsedData.timestamp < CACHE_DURATION) {
             setQrCodeCache(new Set(parsedData.codes));
           } else {
@@ -68,7 +63,6 @@ export default function CheckinScreen() {
             setQrCodeCache(new Set());
           }
         } else {
-          // Dados corrompidos, limpar cache
           await AsyncStorage.removeItem(QR_CODE_CACHE_KEY);
           setQrCodeCache(new Set());
         }
@@ -76,9 +70,7 @@ export default function CheckinScreen() {
         setQrCodeCache(new Set());
       }
     } catch (error) {
-      // Em caso de erro, inicializar cache vazio e continuar funcionamento
       setQrCodeCache(new Set());
-      // Tentar limpar dados corrompidos
       try {
         await AsyncStorage.removeItem(QR_CODE_CACHE_KEY);
       } catch (clearError) {
@@ -88,27 +80,23 @@ export default function CheckinScreen() {
   };
 
   const saveQrCodeToCache = async (code) => {
-    // Verificar se o código é válido antes de salvar
     if (!code || typeof code !== 'string') {
       return;
     }
-    
+
     try {
-      // Garantir que qrCodeCache existe
       const currentCache = qrCodeCache || new Set();
       const newCache = new Set(currentCache).add(code);
-      
+
       setQrCodeCache(newCache);
-      
+
       const dataToSave = {
         codes: Array.from(newCache),
         timestamp: Date.now()
       };
-      
+
       await AsyncStorage.setItem(QR_CODE_CACHE_KEY, JSON.stringify(dataToSave));
     } catch (error) {
-      // Se falhar ao salvar no cache, continuar funcionamento normal
-      // Pelo menos manter o cache em memória
       try {
         const currentCache = qrCodeCache || new Set();
         const newCache = new Set(currentCache).add(code);
@@ -121,22 +109,18 @@ export default function CheckinScreen() {
 
   const isCodeInCache = (code) => {
     try {
-      // Verificar se o código e o cache são válidos
       if (!code || typeof code !== 'string' || !qrCodeCache) {
         return false;
       }
-      
+
       return qrCodeCache.has(code);
     } catch (error) {
-      // Em caso de erro, assumir que não está no cache
       return false;
     }
   };
 
-  // Resetar estados quando a tela recebe foco
   useFocusEffect(
     React.useCallback(() => {
-      // Resetar todos os estados
       setScanned(false);
       setFeedback(null);
       setMessage('');
@@ -146,66 +130,49 @@ export default function CheckinScreen() {
       setLoading(false);
       setProcessingQrCode(false);
       setIsCameraActive(true);
-      
+
       return () => {
         setIsCameraActive(false);
       };
     }, [])
   );
 
-  // Monitorar mudanças nas permissões da câmera
-  useEffect(() => {
-    // Removido console.log desnecessário
-  }, [permission]);
-
-  // Monitorar mudanças nos estados que afetam a câmera
-  useEffect(() => {
-    // Removido console.log desnecessário
-  }, [loading, feedback, showObservationModal, isCameraActive, scanned, showBanner, permission]);
-
   const handleBarCodeScanned = async ({ data }) => {
-    // Verificar se já está processando
     if (loading || processingQrCode) return;
-    
+
     setScanned(true);
     setFeedback(null);
     setMessage('');
 
     try {
-      // 1. Validar padrão do QR code
       if (!validateQrCodePattern(data)) {
         setFeedback('invalid_pattern');
         setMessage('Código QR inválido. Verifique se o código tem 10 caracteres alfanuméricos.');
         return;
       }
 
-      // 2. Verificar se já foi lido (cache)
       if (isCodeInCache(data)) {
         setFeedback('warning');
         setMessage('Este código já foi lido anteriormente.');
         return;
       }
 
-      // 3. Usar companyId do contexto
       if (!companyId) {
         throw new Error('ID da empresa não encontrado');
       }
-      
-      // 4. Mostrar modal de observação (sem loading)
+
       setCurrentQrCode(data);
       setObservation('');
       setShowObservationModal(true);
-      
     } catch (err) {
       const apiMessage = err.response?.data?.message;
       if (apiMessage === 'Usuário já realizou leitura neste estande') {
         setFeedback('warning');
         setMessage(apiMessage);
-        // Salvar no cache mesmo se já foi lido em outro dispositivo
         try {
           await saveQrCodeToCache(data);
         } catch (cacheError) {
-          // Ignorar erros de cache - não deve afetar o fluxo principal
+          // Ignorar erros de cache
         }
       } else {
         setFeedback('error');
@@ -217,25 +184,22 @@ export default function CheckinScreen() {
   const handleObservationSubmit = async () => {
     setProcessingQrCode(true);
     setShowObservationModal(false);
-    setLoading(true); // Adicionar loading
-    
+    setLoading(true);
+
     try {
-      // Obter storedUserId do AsyncStorage
       const storedUserId = await AsyncStorage.getItem('userId');
       if (!storedUserId) {
         throw new Error('ID do usuário não encontrado no dispositivo');
       }
 
-      // 4. Fazer checkin via fila Redis com observação e storedUserId
       await checkinWithQueueApi(currentQrCode, companyId, token, observation, storedUserId);
-      
-      // 5. Salvar no cache após sucesso
+
       try {
         await saveQrCodeToCache(currentQrCode);
       } catch (cacheError) {
-        // Ignorar erros de cache - não deve afetar o fluxo principal
+        // Ignorar erros de cache
       }
-      
+
       setFeedback('success');
       setMessage('Leitura Realizada');
     } catch (err) {
@@ -243,11 +207,10 @@ export default function CheckinScreen() {
       if (apiMessage === 'Usuário já realizou leitura neste estande') {
         setFeedback('warning');
         setMessage(apiMessage);
-        // Salvar no cache mesmo se já foi lido em outro dispositivo
         try {
           await saveQrCodeToCache(currentQrCode);
         } catch (cacheError) {
-          // Ignorar erros de cache - não deve afetar o fluxo principal
+          // Ignorar erros de cache
         }
       } else {
         setFeedback('error');
@@ -257,7 +220,7 @@ export default function CheckinScreen() {
       setProcessingQrCode(false);
       setCurrentQrCode('');
       setObservation('');
-      setLoading(false); // Remover loading
+      setLoading(false);
     }
   };
 
@@ -272,12 +235,15 @@ export default function CheckinScreen() {
   };
 
   if (!permission) {
-    // Permissão ainda está carregando
-    return <View style={styles.center}><ActivityIndicator size="large" /><Text>Carregando permissão da câmera...</Text></View>;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" />
+        <Text>Carregando permissão da câmera...</Text>
+      </View>
+    );
   }
 
   if (!permission.granted) {
-    // Permissão não concedida
     return (
       <View style={styles.center}>
         <Text>Precisamos da sua permissão para acessar a câmera</Text>
@@ -328,19 +294,17 @@ export default function CheckinScreen() {
         </View>
       )}
       {!loading && !feedback && !showObservationModal && !scanned && !showBanner && isCameraActive && permission?.granted && (
-        <>
         <CameraView
           style={StyleSheet.absoluteFillObject}
           facing={facing}
           barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-            onBarcodeScanned={handleBarCodeScanned}
+          onBarcodeScanned={handleBarCodeScanned}
         />
-        </>
       )}
       {!loading && !feedback && !showObservationModal && !scanned && !showBanner && isCameraActive && permission?.granted && (
-        <>
-        <View style={styles.overlay}><Text style={styles.overlayText}>Aponte para o QR Code</Text></View>
-        </>
+        <View style={styles.overlay}>
+          <Text style={styles.overlayText}>Aponte para o QR Code</Text>
+        </View>
       )}
       {!loading && !feedback && !showObservationModal && !scanned && !showBanner && isCameraActive && !permission?.granted && (
         <View style={styles.center}>
@@ -351,7 +315,6 @@ export default function CheckinScreen() {
         </View>
       )}
 
-      {/* Modal de Observação */}
       <Modal
         visible={showObservationModal}
         transparent={true}
@@ -516,4 +479,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-}); 
+});

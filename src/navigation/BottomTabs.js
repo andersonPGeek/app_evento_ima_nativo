@@ -2,11 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import WebviewScreen from '../screens/WebviewScreen';
 import CheckinScreen from '../screens/CheckinScreen';
-import EventListScreen from '../screens/EventListScreen';
-import EventScheduleScreen from '../screens/EventScheduleScreen';
-import SponsorShowcaseScreen from '../screens/SponsorShowcaseScreen';
 import CheckinListScreen from '../screens/CheckinListScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import TicketScreen from '../screens/TicketScreen';
@@ -52,9 +48,6 @@ export default function BottomTabs() {
     );
   }
 
-  // Função para facilitar a criação de tabs de webview
-  const WebTab = (url) => (props) => <WebviewScreen {...props} route={{ ...props.route, params: { url } }} />;
-
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -68,12 +61,6 @@ export default function BottomTabs() {
         },
         tabBarIcon: ({ color, size }) => {
           switch (route.name) {
-            case 'Eventos':
-              return <Ionicons name="grid" size={size} color={color} />;
-            case 'Agenda':
-              return <Ionicons name="calendar" size={size} color={color} />;
-            case 'Estandes':
-              return <Ionicons name="business" size={size} color={color} />;
             case 'Leitura':
               return <Ionicons name="qr-code" size={size} color={color} />;
             case 'Listagem':
@@ -93,9 +80,6 @@ export default function BottomTabs() {
       {/* Role: user */}
       {role === 'user' && (
         <>
-          <Tab.Screen name="Eventos" component={EventListScreen} />
-          <Tab.Screen name="Agenda" component={EventScheduleScreen} />
-          <Tab.Screen name="Estandes" component={SponsorShowcaseScreen} />
           <Tab.Screen name="Ticket" component={TicketScreen} />
           <Tab.Screen 
             name="Sair" 
@@ -119,9 +103,6 @@ export default function BottomTabs() {
           {role === 'estandeAdmin' && (
             <Tab.Screen name="Inscrever" component={RegisterScreen} />
           )}
-          <Tab.Screen name="Eventos" component={EventListScreen} />
-          <Tab.Screen name="Agenda" component={EventScheduleScreen} />
-          <Tab.Screen name="Estandes" component={SponsorShowcaseScreen} />
           <Tab.Screen name="Ticket" component={TicketScreen} />
           <Tab.Screen 
             name="Sair" 
