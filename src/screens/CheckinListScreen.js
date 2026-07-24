@@ -7,8 +7,88 @@ import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 const API_BASE = 'https://events-br-ima.onrender.com/api';
+
+const escapeHtml = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
+const buildPdfHtml = (data) => {
+  const rows = data
+    .map(
+      (item) => `
+        <tr>
+          <td>${escapeHtml(item.Nome)}</td>
+          <td>${escapeHtml(item.Cargo)}</td>
+          <td>${escapeHtml(item.Empresa)}</td>
+          <td>${escapeHtml(item.Email)}</td>
+          <td>${escapeHtml(item.Telefone_Celular)}</td>
+          <td>${escapeHtml(item.observacao || '-')}</td>
+          <td>${escapeHtml(item.funcionario || '-')}</td>
+        </tr>`
+    )
+    .join('');
+
+  const dataGeracao = new Date().toLocaleString('pt-BR');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          * { box-sizing: border-box; }
+          body { font-family: Helvetica, Arial, sans-serif; color: #101828; padding: 24px; }
+          h1 { font-size: 20px; margin: 0 0 4px 0; }
+          .subtitle { font-size: 12px; color: #6b7280; margin-bottom: 16px; }
+          table { width: 100%; border-collapse: collapse; font-size: 11px; }
+          thead th {
+            background-color: #2563eb;
+            color: #fff;
+            text-align: left;
+            padding: 8px 6px;
+            border: 1px solid #1e40af;
+          }
+          tbody td {
+            padding: 6px;
+            border: 1px solid #e5e7eb;
+            vertical-align: top;
+            word-break: break-word;
+          }
+          tbody tr:nth-child(even) { background-color: #f9fafb; }
+        </style>
+      </head>
+      <body>
+        <h1>Leituras Realizadas</h1>
+        <div class="subtitle">Total de registros: ${data.length} — Gerado em ${escapeHtml(dataGeracao)}</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Cargo</th>
+              <th>Empresa</th>
+              <th>Email</th>
+              <th>Telefone</th>
+              <th>Observação</th>
+              <th>Funcionário</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </body>
+    </html>`;
+};
 
 export default function CheckinListScreen() {
   const { user, token, role, companyId } = useAuth();
@@ -24,9 +104,6 @@ export default function CheckinListScreen() {
   const [currentCheckinId, setCurrentCheckinId] = useState(null);
   const [currentCheckinObservation, setCurrentCheckinObservation] = useState('');
   const [updatingObservation, setUpdatingObservation] = useState(false);
-
-  // Estados para modal de confirmação de exportação
-  const [showExportModal, setShowExportModal] = useState(false);
 
   // Função para calcular larguras dinâmicas das colunas
   const calculateColumnWidths = (data) => {
@@ -155,40 +232,46 @@ export default function CheckinListScreen() {
   );
 
   const handleExport = async () => {
-    if (!companyId || !user?.id) return;
+    if (exporting) return;
 
-    setShowExportModal(true);
-  };
+    if (!checkins || checkins.length === 0) {
+      Toast.show({
+        type: 'info',
+        text1: 'Nada para exportar',
+        text2: 'Não há registros na listagem',
+        position: 'bottom',
+        visibilityTime: 3000,
+      });
+      return;
+    }
 
-  const handleConfirmExport = async () => {
-    if (!companyId || !user?.id) return;
-
-    setShowExportModal(false);
     setExporting(true);
 
     try {
-      const response = await fetch(`${API_BASE}/usuarios/checkins/${companyId}/${user.id}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const html = buildPdfHtml(checkins);
+      const { uri } = await Print.printToFileAsync({ html });
 
-      if (response.ok) {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
         Toast.show({
-          type: 'success',
-          text1: 'Exportação realizada com sucesso!',
-          text2: `Os dados foram enviados para o e-mail ${user.email}`,
+          type: 'error',
+          text1: 'Compartilhamento indisponível',
+          text2: 'Este dispositivo não permite compartilhar arquivos',
           position: 'bottom',
           visibilityTime: 4000,
         });
-      } else {
-        throw new Error('Erro ao exportar dados');
+        return;
       }
+
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: 'Compartilhar leituras realizadas',
+        UTI: 'com.adobe.pdf',
+      });
     } catch (err) {
       Toast.show({
         type: 'error',
-        text1: 'Erro ao exportar dados',
+        text1: 'Erro ao gerar PDF',
         text2: 'Tente novamente mais tarde',
         position: 'bottom',
         visibilityTime: 4000,
@@ -196,10 +279,6 @@ export default function CheckinListScreen() {
     } finally {
       setExporting(false);
     }
-  };
-
-  const handleCancelExport = () => {
-    setShowExportModal(false);
   };
 
   // Função para abrir modal de observação
@@ -400,41 +479,6 @@ export default function CheckinListScreen() {
                 ) : (
                   <Text style={styles.modalButtonText}>Confirmar</Text>
                 )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal de Confirmação de Exportação */}
-      <Modal
-        visible={showExportModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleCancelExport}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, styles.exportModalContent]}>
-            <Text style={styles.modalTitle}>Confirmar Exportação</Text>
-            <Text style={styles.modalText}>
-              A base de dados será enviada para o e-mail:{'\n'}
-              <Text style={styles.emailText}>{user?.email}</Text>
-            </Text>
-            <Text style={styles.modalSubtext}>
-              ⚠️ Verifique também sua caixa de spam após o envio.
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]} 
-                onPress={handleCancelExport}
-              >
-                <Text style={[styles.modalButtonText, styles.cancelButtonText]}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmButton]} 
-                onPress={handleConfirmExport}
-              >
-                <Text style={styles.modalButtonText}>Confirmar</Text>
               </TouchableOpacity>
             </View>
           </View>

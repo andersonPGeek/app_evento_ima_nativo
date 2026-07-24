@@ -1,7 +1,14 @@
 import axios from 'axios';
 
 const API_BASE = 'https://events-br-ima.onrender.com/api';
+const API_ORIGIN = 'https://events-br-ima.onrender.com';
 const API_BASE_APP = 'https://app-eventos-ima.vercel.app';
+
+// "Acorda" o servidor (Render free tier hiberna após inatividade).
+// Fire-and-forget: usado para reduzir a latência do primeiro request real.
+export const warmUpApi = async () => {
+  return axios.get(`${API_ORIGIN}/`, { timeout: 60000 });
+};
 
 export const loginApi = async (email, senha) => {
   return axios.post(`${API_BASE}/auth/login`, { Email: email, senha });

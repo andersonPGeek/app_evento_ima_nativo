@@ -2,7 +2,7 @@
   "expo": {
     "name": "IIMA Eventos",
     "slug": "app_evento_ima_nativo",
-    "version": "3.0.1",
+    "version": "4.0.1",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
@@ -19,23 +19,38 @@
           "microphonePermission": "Permita o acesso ao microfone para gravação de vídeo.",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0",
+            "useLegacyPackaging": false,
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ],
+      "./plugins/withSqlite16kb.js"
     ],
     "android": {
       "permissions": [
-        "CAMERA",
         "android.permission.CAMERA"
       ],
+      "blockedPermissions": [
+        "com.google.android.gms.permission.AD_ID"
+      ],
       "package": "com.lyfiti.app_evento_ima_nativo",
-      "enableProguardInReleaseBuilds": true,
-      "enableShrinkResources": true,
-      "enableR8": true
+      "versionCode": 2
     },
     "ios": {
       "infoPlist": {
         "NSCameraUsageDescription": "Permita o acesso à câmera para escanear QR Codes.",
         "NSMicrophoneUsageDescription": "Permita o acesso ao microfone para gravação de vídeo.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "buildNumber": "2"
       },
       "bundleIdentifier": "com.lyfiti.iimaeventos"
     },

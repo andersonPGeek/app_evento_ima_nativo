@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { verificarEmailApi } from '../api';
+import { verificarEmailApi, warmUpApi } from '../api';
+
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 export default function LoginScreen({ navigation, route }) {
   const { login, loading } = useAuth();
@@ -12,19 +14,63 @@ export default function LoginScreen({ navigation, route }) {
   const [showPasswordField, setShowPasswordField] = useState(false);
   const [verifyingEmail, setVerifyingEmail] = useState(false);
 
+  // Cache das verificações de e-mail (por e-mail normalizado) para
+  // reaproveitar o resultado do prefetch e evitar chamadas duplicadas.
+  const verificationCache = useRef(new Map());
+
+  // Acorda o servidor (Render hiberna) assim que a tela abre, reduzindo
+  // a latência do primeiro request quando o usuário clicar em "Próximo".
+  useEffect(() => {
+    warmUpApi().catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (route?.params?.email) setEmail(route.params.email);
     if (route?.params?.senha) setSenha(route.params.senha);
   }, [route?.params]);
 
+  // Dispara a verificação e guarda a promessa em cache (dedup por e-mail).
+  const requestVerification = (rawEmail) => {
+    const key = rawEmail.trim().toLowerCase();
+    if (!key) return null;
+
+    if (verificationCache.current.has(key)) {
+      return verificationCache.current.get(key);
+    }
+
+    const promise = verificarEmailApi(key)
+      .then((response) => response.data)
+      .catch((err) => {
+        // Remove do cache para permitir nova tentativa.
+        verificationCache.current.delete(key);
+        throw err;
+      });
+
+    verificationCache.current.set(key, promise);
+    return promise;
+  };
+
+  // Prefetch em segundo plano enquanto o usuário digita (debounce).
+  useEffect(() => {
+    if (showPasswordField) return;
+
+    const key = email.trim().toLowerCase();
+    if (!isValidEmail(key)) return;
+
+    const timer = setTimeout(() => {
+      requestVerification(key);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [email, showPasswordField]);
+
   const verifyEmail = async (email) => {
     try {
       setVerifyingEmail(true);
       setError('');
-      
-      const response = await verificarEmailApi(email);
-      const data = response.data;
-      
+
+      const data = await requestVerification(email);
+
       if (data.success) {
         if (!data.existeNaBase) {
           // Usuário não existe na base - ir para SyncSympla
