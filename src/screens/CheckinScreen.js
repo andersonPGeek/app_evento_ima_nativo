@@ -11,6 +11,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Cache local para códigos já lidos
 const QR_CODE_CACHE_KEY = 'qr_codes_read';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 horas em millisegundos
+const DUPLICATE_READ_MESSAGE = 'Este código já foi lido anteriormente.';
+
+const isDuplicateCheckinMessage = (message) => {
+  if (!message || typeof message !== 'string') return false;
+
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('já realizou checkin neste estande') ||
+    normalized.includes('já realizou leitura neste estande')
+  );
+};
 
 export default function CheckinScreen() {
   const { token, companyId, showBanner } = useAuth();
@@ -119,6 +130,19 @@ export default function CheckinScreen() {
     }
   };
 
+  const showAlreadyReadWarning = async (code) => {
+    setFeedback('warning');
+    setMessage(DUPLICATE_READ_MESSAGE);
+
+    if (code) {
+      try {
+        await saveQrCodeToCache(code);
+      } catch (cacheError) {
+        // Ignorar erros de cache
+      }
+    }
+  };
+
   useFocusEffect(
     React.useCallback(() => {
       setScanned(false);
@@ -147,13 +171,12 @@ export default function CheckinScreen() {
     try {
       if (!validateQrCodePattern(data)) {
         setFeedback('invalid_pattern');
-        setMessage('Código QR inválido. Verifique se o código tem 10 caracteres alfanuméricos.');
+        setMessage('Código QR inválido.');
         return;
       }
 
       if (isCodeInCache(data)) {
-        setFeedback('warning');
-        setMessage('Este código já foi lido anteriormente.');
+        await showAlreadyReadWarning(data);
         return;
       }
 
@@ -166,14 +189,8 @@ export default function CheckinScreen() {
       setShowObservationModal(true);
     } catch (err) {
       const apiMessage = err.response?.data?.message;
-      if (apiMessage === 'Usuário já realizou leitura neste estande') {
-        setFeedback('warning');
-        setMessage(apiMessage);
-        try {
-          await saveQrCodeToCache(data);
-        } catch (cacheError) {
-          // Ignorar erros de cache
-        }
+      if (isDuplicateCheckinMessage(apiMessage)) {
+        await showAlreadyReadWarning(data);
       } else {
         setFeedback('error');
         setMessage(apiMessage || 'Falha na Leitura');
@@ -204,14 +221,8 @@ export default function CheckinScreen() {
       setMessage('Leitura Realizada');
     } catch (err) {
       const apiMessage = err.response?.data?.message;
-      if (apiMessage === 'Usuário já realizou leitura neste estande') {
-        setFeedback('warning');
-        setMessage(apiMessage);
-        try {
-          await saveQrCodeToCache(currentQrCode);
-        } catch (cacheError) {
-          // Ignorar erros de cache
-        }
+      if (isDuplicateCheckinMessage(apiMessage)) {
+        await showAlreadyReadWarning(currentQrCode);
       } else {
         setFeedback('error');
         setMessage(apiMessage || 'Falha na Leitura');
@@ -260,7 +271,7 @@ export default function CheckinScreen() {
       {!loading && feedback === 'success' && (
         <View style={styles.center}>
           <Ionicons name="checkmark-circle" size={80} color="#22c55e" />
-          <Text style={styles.successText}>{message}</Text>
+          <Text style={[styles.feedbackText, styles.successTextColor]}>{message}</Text>
           <TouchableOpacity style={styles.button} onPress={() => { setScanned(false); setFeedback(null); setMessage(''); }}>
             <Text style={styles.buttonText}>Nova Leitura</Text>
           </TouchableOpacity>
@@ -269,7 +280,7 @@ export default function CheckinScreen() {
       {!loading && feedback === 'error' && (
         <View style={styles.center}>
           <Ionicons name="close-circle" size={80} color="#ef4444" />
-          <Text style={styles.errorText}>{message}</Text>
+          <Text style={[styles.feedbackText, styles.errorTextColor]}>{message}</Text>
           <TouchableOpacity style={styles.button} onPress={() => { setScanned(false); setFeedback(null); setMessage(''); }}>
             <Text style={styles.buttonText}>Tentar Novamente</Text>
           </TouchableOpacity>
@@ -278,7 +289,7 @@ export default function CheckinScreen() {
       {!loading && feedback === 'warning' && (
         <View style={styles.center}>
           <Ionicons name="alert-circle" size={80} color="#facc15" />
-          <Text style={styles.warningText}>{message}</Text>
+          <Text style={[styles.feedbackText, styles.warningTextColor]}>{message}</Text>
           <TouchableOpacity style={styles.button} onPress={() => { setScanned(false); setFeedback(null); setMessage(''); }}>
             <Text style={styles.buttonText}>Nova Leitura</Text>
           </TouchableOpacity>
@@ -287,7 +298,7 @@ export default function CheckinScreen() {
       {!loading && feedback === 'invalid_pattern' && (
         <View style={styles.center}>
           <Ionicons name="alert-circle" size={80} color="#f59e0b" />
-          <Text style={styles.invalidPatternText}>{message}</Text>
+          <Text style={[styles.feedbackText, styles.invalidPatternTextColor]}>{message}</Text>
           <TouchableOpacity style={styles.button} onPress={() => { setScanned(false); setFeedback(null); setMessage(''); }}>
             <Text style={styles.buttonText}>Tentar Novamente</Text>
           </TouchableOpacity>
@@ -308,7 +319,7 @@ export default function CheckinScreen() {
       )}
       {!loading && !feedback && !showObservationModal && !scanned && !showBanner && isCameraActive && !permission?.granted && (
         <View style={styles.center}>
-          <Text style={styles.errorText}>Aguardando permissão da câmera...</Text>
+          <Text style={[styles.feedbackText, styles.errorTextColor]}>Aguardando permissão da câmera...</Text>
           <TouchableOpacity style={styles.button} onPress={requestPermission}>
             <Text style={styles.buttonText}>Conceder permissão</Text>
           </TouchableOpacity>
@@ -360,6 +371,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 24,
   },
   success: {
     backgroundColor: '#d1fae5',
@@ -370,31 +383,25 @@ const styles = StyleSheet.create({
   warning: {
     backgroundColor: '#fef9c3',
   },
-  successText: {
-    color: '#166534',
+  feedbackText: {
     fontSize: 22,
     fontWeight: 'bold',
     marginTop: 16,
+    textAlign: 'center',
+    width: '100%',
+    lineHeight: 30,
   },
-  errorText: {
+  errorTextColor: {
     color: '#b91c1c',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 16,
   },
-  warningText: {
+  warningTextColor: {
     color: '#b45309',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 16,
-    textAlign: 'center',
   },
-  invalidPatternText: {
+  invalidPatternTextColor: {
     color: '#f59e0b',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 16,
-    textAlign: 'center',
+  },
+  successTextColor: {
+    color: '#166534',
   },
   button: {
     marginTop: 32,

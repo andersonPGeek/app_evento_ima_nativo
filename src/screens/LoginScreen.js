@@ -5,6 +5,9 @@ import { verificarEmailApi, warmUpApi } from '../api';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
+const EMAIL_NOT_FOUND_MESSAGE =
+  'E-mail não encontrado. Confira o e-mail digitado ou procure a administração do evento.';
+
 export default function LoginScreen({ navigation, route }) {
   const { login, loading } = useAuth();
   const [email, setEmail] = useState('');
@@ -73,8 +76,8 @@ export default function LoginScreen({ navigation, route }) {
 
       if (data.success) {
         if (!data.existeNaBase) {
-          // Usuário não existe na base - ir para SyncSympla
-          navigation.navigate('SyncSympla', { email });
+          verificationCache.current.delete(email.trim().toLowerCase());
+          setError(EMAIL_NOT_FOUND_MESSAGE);
         } else if (data.primeiroLogin) {
           // Usuário existe mas é primeiro login - ir para CreatePassword
           navigation.replace('CreatePassword', { email, userId: data.userId });
@@ -140,14 +143,19 @@ export default function LoginScreen({ navigation, route }) {
         <Text style={styles.title}>Bem-vindo</Text>
         <Text style={styles.subtitle}>Digite o e-mail informado aos organizadores do evento ou cadastrado no aplicativo</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, !showPasswordField && error ? styles.inputError : null]}
           placeholder="Email"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(value) => {
+            setEmail(value);
+            if (error) setError('');
+          }}
           autoCapitalize="none"
           keyboardType="email-address"
           placeholderTextColor="#888"
         />
+
+        {!showPasswordField && error ? <Text style={styles.error}>{error}</Text> : null}
         
         {showPasswordField && (
         <View style={styles.passwordContainer}>
@@ -165,7 +173,7 @@ export default function LoginScreen({ navigation, route }) {
         </View>
         )}
         
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {showPasswordField && error ? <Text style={styles.error}>{error}</Text> : null}
         
         <TouchableOpacity 
           style={styles.button} 
@@ -239,6 +247,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: '#f9fafb',
   },
+  inputError: {
+    borderColor: '#ef4444',
+    backgroundColor: '#fef2f2',
+  },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -282,8 +294,10 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   error: {
-    color: 'red',
-    marginBottom: 8,
+    color: '#b91c1c',
+    marginBottom: 12,
     textAlign: 'center',
+    width: '100%',
+    lineHeight: 20,
   },
 }); 
