@@ -6,60 +6,9 @@ import { getEmpresaByUserApi } from '../api';
 
 const API_BASE = 'https://events-br-ima.onrender.com/api';
 
-// Função para formatar CPF
-const formatCPF = (cpf) => {
-  // Remove todos os caracteres não numéricos
-  const numbers = cpf.replace(/\D/g, '');
-  
-  // Aplica a máscara
-  if (numbers.length <= 3) {
-    return numbers;
-  } else if (numbers.length <= 6) {
-    return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
-  } else if (numbers.length <= 9) {
-    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
-  } else {
-    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
-  }
-};
-
-// Função para validar CPF
-const validateCPF = (cpf) => {
-  // Remove caracteres não numéricos
-  const numbers = cpf.replace(/\D/g, '');
-  
-  // Verifica se tem 11 dígitos
-  if (numbers.length !== 11) {
-    return false;
-  }
-
-  // Verifica se todos os dígitos são iguais
-  if (/^(\d)\1{10}$/.test(numbers)) {
-    return false;
-  }
-
-  // Validação do primeiro dígito verificador
-  let sum = 0;
-  for (let i = 0; i < 9; i++) {
-    sum += parseInt(numbers.charAt(i)) * (10 - i);
-  }
-  let rest = 11 - (sum % 11);
-  let digit1 = rest > 9 ? 0 : rest;
-
-  // Validação do segundo dígito verificador
-  sum = 0;
-  for (let i = 0; i < 10; i++) {
-    sum += parseInt(numbers.charAt(i)) * (11 - i);
-  }
-  rest = 11 - (sum % 11);
-  let digit2 = rest > 9 ? 0 : rest;
-
-  return digit1 === parseInt(numbers.charAt(9)) && digit2 === parseInt(numbers.charAt(10));
-};
-
 export default function RegisterScreen() {
   const { user, token, companyId } = useAuth();
-  const [formData, setFormData] = useState({ Nome: '', CPF: '', Telefone: '', email: '' });
+  const [formData, setFormData] = useState({ Nome: '', Telefone: '', email: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -121,13 +70,7 @@ export default function RegisterScreen() {
   };
 
   const handleChange = (name, value) => {
-    if (name === 'CPF') {
-      // Formata o CPF enquanto digita
-      const formattedCPF = formatCPF(value);
-      setFormData(prev => ({ ...prev, [name]: formattedCPF }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async () => {
@@ -135,18 +78,7 @@ export default function RegisterScreen() {
     setError('');
     setSuccess('');
 
-    // Valida o CPF antes de enviar
-    if (!validateCPF(formData.CPF)) {
-      setError('CPF inválido');
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Remove formatação do CPF antes de enviar
-      const cpfNumbers = formData.CPF.replace(/\D/g, '');
-      
-      // 1. Cadastrar usuário
       const res = await fetch(`${API_BASE}/usuarios`, {
         method: 'POST',
         headers: {
@@ -155,7 +87,6 @@ export default function RegisterScreen() {
         },
         body: JSON.stringify({
           ...formData,
-          CPF: cpfNumbers, // Envia apenas números
           Role: 'estande',
           CEP: '',
           Numero: '',
@@ -192,7 +123,7 @@ export default function RegisterScreen() {
         throw new Error(errorData.message || 'Erro ao vincular usuário à empresa');
       }
       setSuccess('Usuário cadastrado e vinculado com sucesso!');
-      setFormData({ Nome: '', CPF: '', Telefone: '', email: '' });
+      setFormData({ Nome: '', Telefone: '', email: '' });
       fetchFuncionarios(); // Atualizar lista após cadastro
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao processar o cadastro');
@@ -211,10 +142,6 @@ export default function RegisterScreen() {
           <View style={styles.formGroup}>
             <Text style={styles.label}>Nome</Text>
             <TextInput style={styles.input} value={formData.Nome} onChangeText={v => handleChange('Nome', v)} placeholder="Nome completo" autoCapitalize="words" placeholderTextColor="#888" />
-          </View>
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>CPF</Text>
-            <TextInput style={styles.input} value={formData.CPF} onChangeText={v => handleChange('CPF', v)} placeholder="CPF" keyboardType="numeric" maxLength={14} placeholderTextColor="#888" />
           </View>
           <View style={styles.formGroup}>
             <Text style={styles.label}>Telefone</Text>
